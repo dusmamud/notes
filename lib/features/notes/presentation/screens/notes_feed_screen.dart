@@ -3,11 +3,17 @@ import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../folders/presentation/screens/folders_screen.dart';
+import '../../../folders/presentation/widgets/move_to_folder_sheet.dart';
 import '../../../onboarding/presentation/whats_new_sheet.dart';
+import '../../../settings/presentation/screens/settings_screen.dart';
+import '../../../widgets/presentation/screens/widget_configurator_screen.dart';
 import '../../data/models/note_entity.dart';
 import '../../domain/repositories/note_repository.dart';
+import '../widgets/audio_recording_modal.dart';
 import '../widgets/capture_bar.dart';
 import '../widgets/note_card.dart';
+import '../widgets/note_context_menu_dialog.dart';
 import 'note_editor_screen.dart';
 
 class NotesFeedScreen extends StatefulWidget {
@@ -112,6 +118,73 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     _loadNotes();
   }
 
+  void _batchMoveToFolder() {
+    MoveToFolderSheet.show(context, widget.repository, (folderId) async {
+      for (var id in _selectedIds) {
+        final note = await widget.repository.getNoteById(id);
+        if (note != null) {
+          if (folderId != null) {
+            note.folder.targetId = folderId;
+          } else {
+            note.folder.target = null;
+          }
+          await widget.repository.saveNote(note);
+        }
+      }
+      setState(() {
+        _selectedIds.clear();
+        _isSelectionMode = false;
+      });
+      _loadNotes();
+    });
+  }
+
+  void _openContextMenu(NoteEntity note) {
+    HapticFeedback.heavyImpact();
+    NoteContextMenuDialog.show(context, note, (action) async {
+      switch (action) {
+        case NoteContextAction.pin:
+          await widget.repository.pinNote(note.id, !note.isPinned);
+          _loadNotes();
+          break;
+        case NoteContextAction.lock:
+          note.isLocked = !note.isLocked;
+          await widget.repository.saveNote(note);
+          _loadNotes();
+          break;
+        case NoteContextAction.duplicate:
+          final clone = NoteEntity(
+            title: "${note.title} (Copy)",
+            contentMarkdown: note.contentMarkdown,
+            contentJson: note.contentJson,
+            colorValue: note.colorValue,
+            mathResultsMode: note.mathResultsMode,
+          );
+          await widget.repository.saveNote(clone);
+          _loadNotes();
+          break;
+        case NoteContextAction.moveToFolder:
+          MoveToFolderSheet.show(context, widget.repository, (folderId) async {
+            if (folderId != null) {
+              note.folder.targetId = folderId;
+            } else {
+              note.folder.target = null;
+            }
+            await widget.repository.saveNote(note);
+            _loadNotes();
+          });
+          break;
+        case NoteContextAction.share:
+          // Share preview
+          break;
+        case NoteContextAction.trash:
+          await widget.repository.deleteNote(note.id);
+          _loadNotes();
+          break;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -133,8 +206,13 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
             : IconButton(
                 icon: const Icon(Icons.folder_outlined),
                 tooltip: "Folders",
-                onPressed: () {
-                  // Navigate to folders
+                onPressed: () async {
+                  await Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => FoldersScreen(repository: widget.repository),
+                    ),
+                  );
+                  _loadNotes();
                 },
               ),
         actions: [
@@ -149,6 +227,18 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               onSelected: (val) {
                 if (val == 'select') {
                   setState(() => _isSelectionMode = true);
+                } else if (val == 'widgets') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => WidgetConfiguratorScreen(repository: widget.repository),
+                    ),
+                  );
+                } else if (val == 'settings') {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => SettingsScreen(repository: widget.repository),
+                    ),
+                  );
                 }
               },
               itemBuilder: (_) => [
@@ -163,12 +253,22 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                   ),
                 ),
                 const PopupMenuItem(
-                  value: 'view_as_grid',
+                  value: 'widgets',
                   child: Row(
                     children: [
-                      Icon(Icons.grid_view_rounded, size: 20),
+                      Icon(Icons.widgets_outlined, size: 20),
                       SizedBox(width: 8),
-                      Text("View as Grid"),
+                      Text("Widget Options"),
+                    ],
+                  ),
+                ),
+                const PopupMenuItem(
+                  value: 'settings',
+                  child: Row(
+                    children: [
+                      Icon(Icons.settings_outlined, size: 20),
+                      SizedBox(width: 8),
+                      Text("Settings"),
                     ],
                   ),
                 ),
@@ -192,7 +292,9 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                       hintText: "Search notes, tags, attachments...",
                       prefixIcon: const Icon(Icons.search_rounded),
                       filled: true,
-                      fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
+                      fillColor: isDark
+                          ? Colors.white.withValues(alpha: 0.06)
+                          : Colors.black.withValues(alpha: 0.04),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
@@ -251,11 +353,11 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                           onSelectToggle: (_) => _toggleSelection(note.id),
                           onTap: () => _openEditor(note),
                           onLongPress: () {
-                            HapticFeedback.heavyImpact();
-                            setState(() {
-                              _isSelectionMode = true;
-                              _selectedIds.add(note.id);
-                            });
+                            if (_isSelectionMode) {
+                              _toggleSelection(note.id);
+                            } else {
+                              _openContextMenu(note);
+                            }
                           },
                           onPinToggle: (pin) async {
                             await widget.repository.pinNote(note.id, pin);
@@ -296,11 +398,11 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                           onSelectToggle: (_) => _toggleSelection(note.id),
                           onTap: () => _openEditor(note),
                           onLongPress: () {
-                            HapticFeedback.heavyImpact();
-                            setState(() {
-                              _isSelectionMode = true;
-                              _selectedIds.add(note.id);
-                            });
+                            if (_isSelectionMode) {
+                              _toggleSelection(note.id);
+                            } else {
+                              _openContextMenu(note);
+                            }
                           },
                           onPinToggle: (pin) async {
                             await widget.repository.pinNote(note.id, pin);
@@ -343,7 +445,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                       IconButton(
                         icon: const Icon(Icons.folder_outlined),
                         tooltip: "Move to Folder",
-                        onPressed: _selectedIds.isNotEmpty ? () {} : null,
+                        onPressed: _selectedIds.isNotEmpty ? _batchMoveToFolder : null,
                       ),
                       IconButton(
                         icon: const Icon(Icons.delete_outline_rounded, color: AppColors.tagCoral),
@@ -363,8 +465,12 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               child: CaptureBar(
                 onNewNote: () => _openEditor(),
                 onNewChecklist: () => _openEditor(null, "- [ ] "),
-                onRecordAudio: () => _openEditor(null, "🎙️ Audio Recording..."),
-                onScanDocument: () => _openEditor(),
+                onRecordAudio: () {
+                  AudioRecordingModal.show(context, (memo) {
+                    _openEditor(null, "\n$memo\n");
+                  });
+                },
+                onScanDocument: () => _openEditor(null, "\n📄 [Scanned Document PDF]\n"),
               ),
             ),
         ],
@@ -372,4 +478,3 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     );
   }
 }
-

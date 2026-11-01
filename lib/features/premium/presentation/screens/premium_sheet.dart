@@ -1,0 +1,373 @@
+import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/constants/app_typography.dart';
+
+enum PremiumPlan { yearly, lifetime }
+
+class PremiumSheet extends StatefulWidget {
+  final VoidCallback? onRewardUnlocked;
+
+  const PremiumSheet({super.key, this.onRewardUnlocked});
+
+  static Future<void> show(BuildContext context, {VoidCallback? onRewardUnlocked}) {
+    return showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => PremiumSheet(onRewardUnlocked: onRewardUnlocked),
+    );
+  }
+
+  @override
+  State<PremiumSheet> createState() => _PremiumSheetState();
+}
+
+class _PremiumSheetState extends State<PremiumSheet> {
+  PremiumPlan _selectedPlan = PremiumPlan.yearly;
+  bool _isProcessing = false;
+
+  void _showAdBlockerDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.shield_outlined, color: AppColors.tagCoral),
+            SizedBox(width: 8),
+            Text("Ad Could Not Load"),
+          ],
+        ),
+        content: Text(
+          "The ad could not be loaded. An ad blocker or private DNS appears active. "
+          "Turn it off or upgrade to Premium to unlock unlimited access.",
+          style: AppTypography.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Dismiss"),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: AppColors.accentGold),
+            onPressed: () {
+              Navigator.pop(ctx);
+            },
+            child: const Text("Upgrade to Premium", style: TextStyle(color: Colors.black)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _watchAd({bool simulateAdBlock = false}) async {
+    if (simulateAdBlock) {
+      _showAdBlockerDialog();
+      return;
+    }
+    setState(() => _isProcessing = true);
+    // Simulate rewarded ad delivery with potential ad blocker check
+    await Future.delayed(const Duration(milliseconds: 900));
+    setState(() => _isProcessing = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text("✨ Reward unlocked! You can use this feature once."),
+          backgroundColor: AppColors.tagForest,
+        ),
+      );
+      Navigator.pop(context);
+      widget.onRewardUnlocked?.call();
+    }
+  }
+
+  void _purchasePremium() async {
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(milliseconds: 1000));
+    setState(() => _isProcessing = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("🎉 Welcome to Notes Premium! All features unlocked."),
+          backgroundColor: AppColors.accentGold,
+        ),
+      );
+      Navigator.pop(context);
+    }
+  }
+
+  void _restorePurchases() async {
+    setState(() => _isProcessing = true);
+    await Future.delayed(const Duration(milliseconds: 800));
+    setState(() => _isProcessing = false);
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("No previous active subscription found for this account."),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Drag Handle
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Premium Crown Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 32),
+                  const SizedBox(width: 8),
+                  Text(
+                    "Notes Premium",
+                    style: AppTypography.headingLarge.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Center(
+                child: Text(
+                  "Ad-free · All features unlocked",
+                  style: AppTypography.bodyMedium.copyWith(
+                    color: isDark ? Colors.white70 : Colors.black54,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Feature Highlights
+              _buildFeatureItem(
+                Icons.mic_none_rounded,
+                "Unlimited Voice Recordings with Transcription",
+                isDark,
+              ),
+              _buildFeatureItem(
+                Icons.document_scanner_outlined,
+                "Unlimited Document Scans & PDF Compilations",
+                isDark,
+              ),
+              _buildFeatureItem(
+                Icons.folder_outlined,
+                "Unlimited Custom Folders & Notes",
+                isDark,
+              ),
+              _buildFeatureItem(
+                Icons.cloud_upload_outlined,
+                "Cloud Sync with Google Drive",
+                isDark,
+              ),
+              const SizedBox(height: 20),
+
+              // Pricing Tier Selection
+              _buildPlanOption(
+                plan: PremiumPlan.yearly,
+                title: "Yearly Plan",
+                price: "\$14.99 / year",
+                badge: "7-Day Free Trial",
+                isDark: isDark,
+              ),
+              const SizedBox(height: 12),
+              _buildPlanOption(
+                plan: PremiumPlan.lifetime,
+                title: "Lifetime Purchase",
+                price: "\$29.99",
+                badge: "Pay once, own forever",
+                isDark: isDark,
+              ),
+              const SizedBox(height: 24),
+
+              // Upgrade Button
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.accentGold,
+                  foregroundColor: Colors.black,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: _isProcessing ? null : _purchasePremium,
+                child: _isProcessing
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
+                      )
+                    : Text(
+                        _selectedPlan == PremiumPlan.yearly
+                            ? "Start 7-Day Free Trial"
+                            : "Unlock Lifetime Access",
+                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+              ),
+
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.black12)),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    child: Text(
+                      "OR",
+                      style: AppTypography.captionSmall.copyWith(
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: isDark ? Colors.white12 : Colors.black12)),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Watch Ad Button
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
+                label: const Text("Watch a Short Ad · Use Once"),
+                onPressed: _isProcessing ? null : _watchAd,
+              ),
+
+              const SizedBox(height: 16),
+              // Footer Actions
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  TextButton(
+                    onPressed: _restorePurchases,
+                    child: Text(
+                      "Restore Purchases",
+                      style: AppTypography.captionMedium.copyWith(
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Text(
+                      "Not Now",
+                      style: AppTypography.captionMedium.copyWith(
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeatureItem(IconData icon, String text, bool isDark) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.accentGold.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.accentGold, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: AppTypography.bodyMedium.copyWith(fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPlanOption({
+    required PremiumPlan plan,
+    required String title,
+    required String price,
+    required String badge,
+    required bool isDark,
+  }) {
+    final isSelected = _selectedPlan == plan;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedPlan = plan),
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.accentGold.withValues(alpha: isDark ? 0.2 : 0.1)
+              : (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? AppColors.accentGold : (isDark ? Colors.white12 : Colors.black12),
+            width: isSelected ? 2 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
+              color: isSelected ? AppColors.accentGold : (isDark ? Colors.white54 : Colors.black45),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: AppTypography.bodyLarge.copyWith(fontWeight: FontWeight.w600)),
+                  Text(
+                    badge,
+                    style: AppTypography.captionSmall.copyWith(
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              price,
+              style: AppTypography.bodyLarge.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isSelected ? AppColors.accentGold : null,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

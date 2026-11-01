@@ -11,6 +11,12 @@ class AppTypography {
     fontWeight: FontWeight.bold,
   );
 
+  static const TextStyle headingMedium = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 20,
+    fontWeight: FontWeight.bold,
+  );
+
   static const TextStyle headingSmall = TextStyle(
     fontFamily: fontFamily,
     fontSize: 18,
@@ -20,6 +26,12 @@ class AppTypography {
   static const TextStyle bodyLarge = TextStyle(
     fontFamily: fontFamily,
     fontSize: 16,
+    fontWeight: FontWeight.normal,
+  );
+
+  static const TextStyle bodyMedium = TextStyle(
+    fontFamily: fontFamily,
+    fontSize: 15,
     fontWeight: FontWeight.normal,
   );
 

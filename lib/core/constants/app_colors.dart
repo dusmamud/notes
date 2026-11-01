@@ -17,6 +17,9 @@ class AppColors {
   static const Color accentRed = Color(0xFFFE2C54);
   static const Color tagCoral = Color(0xFFFE2C54);
   static const Color accentOrange = Color(0xFFFF8C27);
+  static const Color tagForest = Color(0xFF34C759);
+  static const Color tagSky = Color(0xFF32ADE6);
+  static const Color tagLime = Color(0xFFA2845E);
 
   // Surface & Card Neutrals
   static const Color surfaceLight = Color(0xFFFFFFFF);
