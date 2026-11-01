@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'core/theme/app_theme.dart';
+import 'features/notes/data/repositories/note_repository_impl.dart';
+import 'features/notes/presentation/screens/notes_feed_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
+  final repository = NoteRepositoryImpl();
 
   runApp(
     EasyLocalization(
@@ -20,13 +23,15 @@ void main() async {
       ],
       path: 'assets/translations',
       fallbackLocale: const Locale('en', 'US'),
-      child: const NotesApp(),
+      child: NotesApp(repository: repository),
     ),
   );
 }
 
 class NotesApp extends StatelessWidget {
-  const NotesApp({super.key});
+  final NoteRepositoryImpl repository;
+
+  const NotesApp({super.key, required this.repository});
 
   @override
   Widget build(BuildContext context) {
@@ -39,11 +44,7 @@ class NotesApp extends StatelessWidget {
       theme: AppTheme.light(),
       darkTheme: AppTheme.dark(),
       themeMode: ThemeMode.system,
-      home: const Scaffold(
-        body: Center(
-          child: Text('Notes Initialized'),
-        ),
-      ),
+      home: NotesFeedScreen(repository: repository),
     );
   }
 }
