@@ -87,10 +87,7 @@ flutter:
     - assets/images/
     - assets/translations/
     - assets/fonts/
-
-  shaders:
-    - assets/shaders/ink_sparkle.frag
-    - assets/shaders/stretch_effect.frag
+    - assets/shaders/
 
   fonts:
     - family: pretenda
