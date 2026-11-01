@@ -33,6 +33,9 @@ jobs:
       - name: Analyze Project
         run: flutter analyze
 
+      - name: Run Tests
+        run: flutter test
+
       - name: Build Release APK
         run: flutter build apk --release
 
@@ -41,3 +44,4 @@ jobs:
         with:
           name: notes-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
+

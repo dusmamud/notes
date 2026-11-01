@@ -1,30 +1,22 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
-import 'package:note/main.dart';
+import 'package:note/core/services/math_notes_engine.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('MathNotesEngine arithmetic evaluation test', () {
+    final engine = MathNotesEngine(mode: MathResultsMode.suggest);
+    final result = engine.evaluateLine('125 * 4 =');
+    expect(result, '500');
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  test('MathNotesEngine percentage calculation test', () {
+    final engine = MathNotesEngine(mode: MathResultsMode.suggest);
+    final result = engine.evaluateLine('500 - 10% =');
+    expect(result, '450');
+  });
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+  test('MathNotesEngine square root test', () {
+    final engine = MathNotesEngine(mode: MathResultsMode.suggest);
+    final result = engine.evaluateLine('sqrt(144) =');
+    expect(result, '12');
   });
 }

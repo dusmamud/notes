@@ -3,3 +3,4 @@ class AppTypography {
 
   static const String fontFamily = 'pretenda';
 }
+

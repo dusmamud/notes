@@ -8,3 +8,4 @@ class AppDimensions {
   static const double toolbarHeight = 56.0;
   static const double captureBarHeight = 64.0;
 }
+
