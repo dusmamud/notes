@@ -23,6 +23,7 @@ class NoteEntity {
 
   bool isPinned;
   bool isLocked;
+  bool isArchived;
   String? passwordHash;
 
   bool isTrashed;
@@ -34,6 +35,7 @@ class NoteEntity {
   String? backgroundImagePath;
   double textScale;
   String? customFontPath;
+  String mathResultsMode;
 
   final folder = ToOne<FolderEntity>();
 
@@ -45,22 +47,43 @@ class NoteEntity {
 
   NoteEntity({
     this.id = 0,
-    required this.uuid,
+    String? uuid,
     required this.title,
     this.contentJson = '[]',
     this.plainText = '',
-    required this.createdAt,
-    required this.updatedAt,
+    String? contentMarkdown,
+    DateTime? createdAt,
+    DateTime? updatedAt,
     this.isPinned = false,
     this.isLocked = false,
+    this.isArchived = false,
     this.passwordHash,
     this.isTrashed = false,
     this.trashedAt,
     this.colorIndex = 0,
+    int? colorValue,
     this.coverImagePath,
     this.backgroundImagePath,
     this.textScale = 1.0,
     this.customFontPath,
-  });
-}
+    this.mathResultsMode = 'suggest',
+  })  : uuid = uuid ?? DateTime.now().microsecondsSinceEpoch.toString(),
+        createdAt = createdAt ?? DateTime.now(),
+        updatedAt = updatedAt ?? DateTime.now() {
+    if (contentMarkdown != null) {
+      plainText = contentMarkdown;
+    }
+    if (colorValue != null) {
+      colorIndex = colorValue;
+    }
+  }
 
+  String get contentMarkdown => plainText;
+  set contentMarkdown(String val) => plainText = val;
+
+  bool get isTrash => isTrashed;
+  set isTrash(bool val) => isTrashed = val;
+
+  int? get colorValue => colorIndex != 0 ? colorIndex : null;
+  set colorValue(int? val) => colorIndex = val ?? 0;
+}

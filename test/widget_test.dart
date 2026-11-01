@@ -1,9 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:note/core/services/math_notes_engine.dart';
 import 'package:note/features/notes/data/models/note_entity.dart';
 import 'package:note/features/notes/data/repositories/note_repository_impl.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   test('MathNotesEngine arithmetic evaluation test', () {
     final engine = MathNotesEngine(mode: MathResultsMode.suggest);
     final result = engine.evaluateLine('125 * 4 =');
@@ -23,6 +25,7 @@ void main() {
   });
 
   test('NoteRepositoryImpl CRUD and Pinning test', () async {
+    SharedPreferences.setMockInitialValues({});
     final repo = NoteRepositoryImpl();
     final note = NoteEntity(
       title: 'Grocery List',

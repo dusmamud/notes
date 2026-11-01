@@ -99,3 +99,4 @@ class _CaptureIconButton extends StatelessWidget {
     );
   }
 }
+

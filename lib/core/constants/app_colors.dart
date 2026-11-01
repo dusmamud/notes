@@ -6,19 +6,32 @@ class AppColors {
 
   // Primary Brand & Accents
   static const Color brandPrimary = Color(0xFFE4AF0A);
+  static const Color accentGold = Color(0xFFE4AF0A);
   static const Color brandAmber = Color(0xFFFABB00);
   static const Color accentBlue = Color(0xFF0088FF);
+  static const Color tagBlue = Color(0xFF0088FF);
   static const Color accentTeal = Color(0xFF00C8B3);
+  static const Color tagTeal = Color(0xFF00C8B3);
   static const Color accentPurple = Color(0xFFCB30E0);
+  static const Color tagPurple = Color(0xFFCB30E0);
   static const Color accentRed = Color(0xFFFE2C54);
+  static const Color tagCoral = Color(0xFFFE2C54);
   static const Color accentOrange = Color(0xFFFF8C27);
 
   // Surface & Card Neutrals
+  static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color surfaceDark = Color(0xFF2C2C2E);
   static const Color lightCardBg = Color(0xFFF2F2F7);
   static const Color darkCardBg = Color(0xFF39393B);
   static const Color lightScaffold = Color(0xFFFFFFFF);
   static const Color darkScaffold = Color(0xFF1C1C1E);
   static const Color oledBlack = Color(0xFF000000);
+
+  // Typography Neutrals
+  static const Color textPrimaryLight = Color(0xFF000000);
+  static const Color textSecondaryLight = Color(0xFF8E8E93);
+  static const Color textPrimaryDark = Color(0xFFFFFFFF);
+  static const Color textSecondaryDark = Color(0xFF8E8E93);
 
   // Note Card Pastel Color Matrix
   static const List<Color> pastelPalette = [
@@ -30,4 +43,3 @@ class AppColors {
     Color(0xFFE2F0CB), // Lime
   ];
 }
-

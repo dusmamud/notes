@@ -29,9 +29,14 @@ class WhatsNewSheet extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppDimensions.radiusSheet)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(AppDimensions.radiusSheet),
+        ),
       ),
-      padding: const EdgeInsets.symmetric(horizontal: AppDimensions.paddingLarge, vertical: AppDimensions.paddingMedium),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppDimensions.paddingLarge,
+        vertical: AppDimensions.paddingMedium,
+      ),
       child: SafeArea(
         top: false,
         child: Column(
@@ -48,19 +53,19 @@ class WhatsNewSheet extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: AppDimensions.paddingLarge),
+            SizedBox(height: AppDimensions.paddingLarge),
             Text(
               "What's New in Notes",
               style: AppTypography.headingLarge,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppDimensions.paddingSmall),
+            SizedBox(height: AppDimensions.paddingSmall),
             Text(
               "Everything Notes can do, where to find it, and how to use it.",
               style: AppTypography.captionMedium,
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: AppDimensions.paddingLarge),
+            SizedBox(height: AppDimensions.paddingLarge),
             _FeatureRow(
               icon: Icons.functions_rounded,
               color: AppColors.accentGold,
@@ -91,7 +96,7 @@ class WhatsNewSheet extends StatelessWidget {
               title: "Glass & Classic Style",
               description: "Enjoy a glass-inspired interface with smooth spring physics.",
             ),
-            const SizedBox(height: AppDimensions.paddingLarge),
+            SizedBox(height: AppDimensions.paddingLarge),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.accentGold,
@@ -110,7 +115,7 @@ class WhatsNewSheet extends StatelessWidget {
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
             ),
-            const SizedBox(height: AppDimensions.paddingSmall),
+            SizedBox(height: AppDimensions.paddingSmall),
           ],
         ),
       ),
@@ -146,7 +151,7 @@ class _FeatureRow extends StatelessWidget {
             ),
             child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(width: AppDimensions.paddingMedium),
+          SizedBox(width: AppDimensions.paddingMedium),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
