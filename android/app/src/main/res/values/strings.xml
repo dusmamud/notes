@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Notes</string>
+    <string name="widget_capture_camera">Take Photo or Video</string>
+    <string name="widget_capture_checklist">New Checklist</string>
+    <string name="widget_capture_description">Starts a note, checklist, recording, photo or scan in one tap.</string>
+    <string name="widget_capture_record">Record Audio</string>
+    <string name="widget_capture_scan">Scan Documents</string>
+    <string name="widget_folder_description">Shows the latest notes in a folder.</string>
+    <string name="widget_new_note_description">Starts a note in one tap.</string>
+    <string name="widget_new_note_label">New Note</string>
+    <string name="widget_note_description">Shows one of your notes on the Home screen.</string>
+    <string name="widget_plain_note_description">Shows one of your notes on a plain page.</string>
+</resources>
+

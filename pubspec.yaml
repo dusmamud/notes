@@ -13,11 +13,10 @@ dependencies:
 
   # UI, Icons & Theming
   cupertino_icons: ^1.0.8
-  flex_color_scheme: ^8.0.1
+  flex_color_scheme: ^8.4.0
   flutter_slidable: ^3.1.2
-  pull_down_button: ^0.10.2
-  smooth_sheets: ^0.8.0
-  emoji_picker_flutter: ^3.0.0
+  smooth_sheets: ^0.8.2
+  emoji_picker_flutter: ^3.1.0
   sliver_tools: ^0.2.12
   sprung: ^3.0.1
 

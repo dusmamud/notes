@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_date">#7affffff</color>
+    <color name="widget_edit_button">#ff3c3c3e</color>
+    <color name="widget_edit_button_pressed">#663c3c3e</color>
+    <color name="widget_edit_card">#ff1c1c1e</color>
+    <color name="widget_edit_label">#ffffffff</color>
+    <color name="widget_edit_pressed">#1fffffff</color>
+    <color name="widget_edit_row">#ff2c2c2e</color>
+    <color name="widget_edit_secondary">#63ebebf5</color>
+    <color name="widget_edit_separator">#80545458</color>
+    <color name="widget_glow_bottom">@color/widget_glow_bottom_dark</color>
+    <color name="widget_glow_top">@color/widget_glow_top_dark</color>
+    <color name="widget_hairline">@color/widget_hairline_dark</color>
+    <color name="widget_header_line">@color/widget_header_line_dark</color>
+    <color name="widget_header_rim">@color/widget_header_rim_dark</color>
+    <color name="widget_label">#ffffffff</color>
+    <color name="widget_new_note_ink">#ffffffff</color>
+    <color name="widget_page_text">#ffe5e5e7</color>
+    <color name="widget_paper">@color/widget_paper_dark</color>
+    <color name="widget_paper_bottom">@color/widget_paper_bottom_dark</color>
+    <color name="widget_perforation">@color/widget_perforation_dark</color>
+    <color name="widget_preview_bar">#3dffffff</color>
+    <color name="widget_rim_bottom">@color/widget_rim_bottom_dark</color>
+    <color name="widget_rim_top">@color/widget_rim_top_dark</color>
+    <color name="widget_row_separator">@color/widget_row_separator_dark</color>
+    <color name="widget_secondary_label">@color/widget_secondary_label_dark</color>
+    <color name="widget_thumb_stroke">@color/widget_thumb_stroke_dark</color>
+    <color name="window_background">#ff000000</color>
+</resources>
