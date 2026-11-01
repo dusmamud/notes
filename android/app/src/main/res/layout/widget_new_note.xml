@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView
+        android:layout_gravity="center"
+        android:id="@+id/widget_new_note_disc"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_new_note_disc"
+        android:scaleType="fitCenter"
+        android:contentDescription="@null"/>
+    <ImageView
+        android:layout_gravity="center"
+        android:id="@+id/widget_new_note_glyph"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_new_note_glyph"
+        android:scaleType="fitCenter"
+        android:tint="@color/widget_new_note_ink"
+        android:contentDescription="@string/widget_new_note_label"
+        android:tintMode="src_in"/>
+</FrameLayout>

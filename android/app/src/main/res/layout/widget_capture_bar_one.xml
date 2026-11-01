@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:contentDescription="@string/widget_new_note_label">
+    <ImageView
+        android:id="@+id/widget_capture_one_base"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_capture_one_base"
+        android:scaleType="fitCenter"
+        android:importantForAccessibility="no"/>
+    <ImageView
+        android:id="@+id/widget_capture_one_light"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_capture_one_light"
+        android:scaleType="fitCenter"
+        android:importantForAccessibility="no"/>
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/widget_capture_one_mark"
+        android:scaleType="fitCenter"
+        android:tint="@color/widget_header_text"
+        android:importantForAccessibility="no"
+        android:tintMode="src_in"/>
+</FrameLayout>

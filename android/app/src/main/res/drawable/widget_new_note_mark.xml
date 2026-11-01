@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#00000000"/>
+            <size
+                android:height="65dp"
+                android:width="65dp"/>
+        </shape>
+    </item>
+    <item
+        android:drawable="@drawable/ic_quick_note"
+        android:left="16.5dp"
+        android:top="16.5dp"
+        android:right="16.5dp"
+        android:bottom="16.5dp"/>
+</layer-list>

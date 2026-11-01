@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_perforation"
+    android:paddingTop="3dp"
+    android:layout_width="match_parent"
+    android:layout_height="@dimen/widget_perforation_height"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+    <ImageView
+        android:layout_gravity="top"
+        android:id="@+id/widget_perforation_dots"
+        android:background="@drawable/widget_dots"
+        android:layout_width="match_parent"
+        android:layout_height="2dp"
+        android:contentDescription="@null"
+        android:importantForAccessibility="no"/>
+</FrameLayout>
