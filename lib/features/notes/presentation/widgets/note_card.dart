@@ -46,12 +46,12 @@ class NoteCard extends StatelessWidget {
           border: Border.all(
             color: isSelected
                 ? AppColors.accentGold
-                : (isDark ? Colors.white10 : Colors.black.withOpacity(0.06)),
+                : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
             width: isSelected ? 2.0 : 1.0,
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.03),
+              color: Colors.black.withValues(alpha: 0.03),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -128,7 +128,7 @@ class NoteCard extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                     decoration: BoxDecoration(
-                      color: AppColors.accentGold.withOpacity(0.15),
+                      color: AppColors.accentGold.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: const Text(

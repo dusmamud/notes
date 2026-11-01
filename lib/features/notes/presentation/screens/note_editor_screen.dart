@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -58,8 +57,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (lines.isEmpty) return;
     final lastLine = lines.last.trim();
     if (lastLine.endsWith('=')) {
-      final expr = lastLine.substring(0, lastLine.length - 1).trim();
-      final result = _mathEngine.evaluateExpression(expr);
+      final result = _mathEngine.evaluateLine(lastLine);
       if (result != null) {
         final newText = "$text $result";
         _contentController.value = TextEditingValue(
@@ -119,10 +117,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         ? 0
         : _contentController.text.trim().split(RegExp(r'\s+')).length;
 
-    return WillPopScope(
-      onWillPop: () async {
-        await _autoSave();
-        return true;
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) {
+          await _autoSave();
+        }
       },
       child: Scaffold(
         appBar: AppBar(

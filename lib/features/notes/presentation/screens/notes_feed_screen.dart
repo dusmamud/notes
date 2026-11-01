@@ -192,7 +192,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                       hintText: "Search notes, tags, attachments...",
                       prefixIcon: const Icon(Icons.search_rounded),
                       filled: true,
-                      fillColor: isDark ? Colors.white.withOpacity(0.06) : Colors.black.withOpacity(0.04),
+                      fillColor: isDark ? Colors.white.withValues(alpha: 0.06) : Colors.black.withValues(alpha: 0.04),
                       contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(AppDimensions.radiusInput),

@@ -59,6 +59,7 @@ class NoteEntity {
     this.isArchived = false,
     this.passwordHash,
     this.isTrashed = false,
+    bool? isTrash,
     this.trashedAt,
     this.colorIndex = 0,
     int? colorValue,
@@ -75,6 +76,9 @@ class NoteEntity {
     }
     if (colorValue != null) {
       colorIndex = colorValue;
+    }
+    if (isTrash != null) {
+      isTrashed = isTrash;
     }
   }
 

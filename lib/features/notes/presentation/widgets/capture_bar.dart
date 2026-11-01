@@ -26,7 +26,7 @@ class CaptureBar extends StatelessWidget {
         height: AppDimensions.heightCaptureBar,
         padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: isDark ? AppColors.surfaceDark.withOpacity(0.92) : Colors.white.withOpacity(0.92),
+          color: isDark ? AppColors.surfaceDark.withValues(alpha: 0.92) : Colors.white.withValues(alpha: 0.92),
           borderRadius: BorderRadius.circular(AppDimensions.radiusPill),
           border: Border.all(
             color: isDark ? Colors.white12 : Colors.black12,
@@ -34,7 +34,7 @@ class CaptureBar extends StatelessWidget {
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.12),
+              color: Colors.black.withValues(alpha: 0.12),
               blurRadius: 16,
               offset: const Offset(0, 4),
             ),
