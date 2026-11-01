@@ -33,3 +33,4 @@ class FolderEntity {
     this.isExpanded = false,
   });
 }
+

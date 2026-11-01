@@ -162,3 +162,4 @@ class MathNotesEngine {
     return val.toStringAsFixed(2).replaceAll(RegExp(r'\.?0+$'), '');
   }
 }
+

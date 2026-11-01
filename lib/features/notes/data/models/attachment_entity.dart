@@ -32,3 +32,4 @@ class AttachmentEntity {
     this.isLargeView = false,
   });
 }
+

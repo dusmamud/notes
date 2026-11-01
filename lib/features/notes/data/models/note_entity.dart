@@ -63,3 +63,4 @@ class NoteEntity {
     this.customFontPath,
   });
 }
+

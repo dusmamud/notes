@@ -19,3 +19,4 @@ class TagEntity {
     this.colorValue = 0xFF0088FF,
   });
 }
+
