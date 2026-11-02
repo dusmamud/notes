@@ -75,14 +75,18 @@ subprojects {
     // only this library's compileSdk to 36, matching the app's Flutter 3.44
     // compileSdk, using the same guarded afterEvaluate pattern as the JVM pin
     // above. This changes no targetSdk, minSdk, feature, or Dart code.
+    // Run #31 fix: the BaseExtension fallback in this block broke the whole build
+    // script. Under AGP 9.0.1 (android.newDsl=true) BaseExtension is
+    // deprecated and its Kotlin compileSdkVersion is a String?, so assigning
+    // the Int 36 failed script compilation with 3 errors (lines 53, 83, 85)
+    // before any task ran. The android extension under AGP 9 is a
+    // CommonExtension, whose compileSdk is an Int?, so only that branch is
+    // kept. The Java 17 pin above is untouched: it compiled in runs 22-30.
     val setObjectboxCompileSdk36: Project.() -> Unit = {
         if (project.name == "objectbox_flutter_libs") {
             val androidExt = extensions.findByName("android")
             if (androidExt is com.android.build.api.dsl.CommonExtension) {
                 androidExt.compileSdk = 36
-            } else if (androidExt is com.android.build.gradle.BaseExtension) {
-                @Suppress("DEPRECATION")
-                androidExt.compileSdkVersion = 36
             }
         }
     }
