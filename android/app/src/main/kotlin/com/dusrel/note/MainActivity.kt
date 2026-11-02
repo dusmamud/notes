@@ -169,5 +169,16 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+
+        // 6. Hardware & Platform Capability Channel
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "inotes/device")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getAndroidSdkInt" -> {
+                        result.success(android.os.Build.VERSION.SDK_INT)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
     }
 }

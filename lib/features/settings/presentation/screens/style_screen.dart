@@ -1,15 +1,33 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 
 /// Ground-truth hardware capability check for Glass style.
-/// Decompiled evidence indicates Vulkan/Impeller shader cache checks (PipelineCacheKeeper).
-/// On hardware-capable devices (Android API >= 29 / Desktop / iOS), Glass switches directly.
-/// On incapable devices, prompts user with "Unsupported Device" dialog.
+/// Native hardware blur (RenderEffect) was introduced in Android 10 (API level 29).
+/// On non-Android platforms (iOS, macOS, Windows, Linux), hardware blur is natively supported.
+/// On Android devices with API < 29 or when hardware blur is not supported, the "Unsupported Device"
+/// dialog is displayed to allow the user to Cancel (retain Classic) or proceed with OK (force Glass).
 class GlassCapabilityChecker {
-  static bool isSupported() {
-    return true;
+  static const MethodChannel channel = MethodChannel('inotes/device');
+  static bool? _mockSupported;
+
+  @visibleForTesting
+  static void setMockSupported(bool? supported) {
+    _mockSupported = supported;
+  }
+
+  static Future<bool> isSupported() async {
+    if (_mockSupported != null) return _mockSupported!;
+    if (!Platform.isAndroid) return true;
+    try {
+      final int? sdkInt = await channel.invokeMethod<int>('getAndroidSdkInt');
+      return (sdkInt ?? 0) >= 29;
+    } catch (_) {
+      return false; // Fail-closed on error
+    }
   }
 }
 
@@ -114,14 +132,17 @@ class StyleScreen extends StatelessWidget {
                     accentColor: themeCtrl.accentColor,
                     isDark: isDark,
                     isGlassMode: true,
-                    onTap: () {
+                    onTap: () async {
                       if (!isGlass) {
-                        if (GlassCapabilityChecker.isSupported()) {
+                        final supported = await GlassCapabilityChecker.isSupported();
+                        if (supported) {
                           themeCtrl.setUiStyle('glass');
                         } else {
-                          _showUnsupportedDeviceDialog(context, () {
-                            themeCtrl.setUiStyle('glass');
-                          });
+                          if (context.mounted) {
+                            _showUnsupportedDeviceDialog(context, () {
+                              themeCtrl.setUiStyle('glass');
+                            });
+                          }
                         }
                       }
                     },
