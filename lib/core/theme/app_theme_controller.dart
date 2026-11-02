@@ -138,3 +138,4 @@ class AppThemeController extends ChangeNotifier {
     await prefs.setString('math_results_mode', val);
   }
 }
+

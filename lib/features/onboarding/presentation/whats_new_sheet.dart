@@ -36,6 +36,18 @@ class WhatsNewSheet extends StatelessWidget {
     }
   }
 
+  static Future<void> show(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    final uiStyle = prefs.getString('ui_style') ?? 'glass';
+    final isGlass = uiStyle == 'glass';
+    if (!context.mounted) return;
+    await showModalSheet(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => WhatsNewSheet(isGlassStyle: isGlass),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;

@@ -86,8 +86,8 @@ class _TrashScreenState extends State<TrashScreen> {
   }
 
   int _calculateDaysLeft(NoteEntity note) {
-    if (note.deletedAt == null) return 30;
-    final elapsed = DateTime.now().difference(note.deletedAt!).inDays;
+    if (note.trashedAt == null) return 30;
+    final elapsed = DateTime.now().difference(note.trashedAt!).inDays;
     final left = 30 - elapsed;
     return left > 0 ? left : 0;
   }

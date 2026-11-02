@@ -12,6 +12,8 @@ class NoteRepositoryImpl implements NoteRepository {
   final List<TagEntity> _tags = [];
   bool _initialized = false;
 
+  Future<void> initialize() => _ensureInitialized();
+
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
     try {

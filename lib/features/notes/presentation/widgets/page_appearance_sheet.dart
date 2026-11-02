@@ -43,8 +43,8 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
   @override
   void initState() {
     super.initState();
-    _fontSize = (widget.note.textScaleFactor != null && widget.note.textScaleFactor! > 0)
-        ? widget.note.textScaleFactor!
+    _fontSize = (widget.note.textScale > 0)
+        ? widget.note.textScale
         : AppThemeController.instance.defaultFontSize;
   }
 
@@ -233,7 +233,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                                   onChanged: (val) {
                                     setState(() {
                                       _fontSize = val;
-                                      widget.note.textScaleFactor = val;
+                                      widget.note.textScale = val;
                                     });
                                     widget.onAppearanceChanged();
                                   },
@@ -246,7 +246,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                             onPressed: () {
                               setState(() {
                                 _fontSize = themeCtrl.defaultFontSize;
-                                widget.note.textScaleFactor = themeCtrl.defaultFontSize;
+                                widget.note.textScale = themeCtrl.defaultFontSize;
                               });
                               widget.onAppearanceChanged();
                             },

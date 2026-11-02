@@ -20,7 +20,6 @@ class FoldersScreen extends StatefulWidget {
 
 class _FoldersScreenState extends State<FoldersScreen> {
   List<FolderEntity> _folders = [];
-  List<NoteEntity> _allNotes = [];
   int _totalNotesCount = 0;
   int _pinnedCount = 0;
   int _lockedCount = 0;
@@ -70,7 +69,6 @@ class _FoldersScreenState extends State<FoldersScreen> {
 
     if (mounted) {
       setState(() {
-        _allNotes = allNotes;
         _totalNotesCount = allNotes.length;
         _pinnedCount = pinned;
         _lockedCount = locked;
@@ -193,7 +191,7 @@ class _FoldersScreenState extends State<FoldersScreen> {
                       colorValue: selectedColor,
                     );
                     if (parent != null) {
-                      folder.parent.targetId = parent.id;
+                      folder.parentFolder.targetId = parent.id;
                     }
                     await widget.repository.saveFolder(folder);
                     if (context.mounted) Navigator.of(ctx).pop();
@@ -324,7 +322,6 @@ class _FoldersScreenState extends State<FoldersScreen> {
                         _buildCard(
                           _folders.map((f) {
                             final count = _folderNoteCounts[f.id] ?? 0;
-                            final isExpanded = _expandedFolderIds.contains(f.id);
                             return Column(
                               children: [
                                 ListTile(

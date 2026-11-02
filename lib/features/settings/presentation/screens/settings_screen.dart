@@ -501,7 +501,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (_) => PasscodeScreen(
-                                  mode: _hasPasscode ? PasscodeMode.changePasscode : PasscodeMode.setupPasscode,
+                                  mode: PasscodeMode.setup,
                                   onSuccess: _loadSettings,
                                 ),
                               ),
