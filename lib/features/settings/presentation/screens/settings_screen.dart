@@ -432,12 +432,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 Navigator.of(context).pop();
                                 _loadSettings();
                               },
+                              onCancel: () => Navigator.of(context).pop(),
                             ),
                           ),
                         );
                       } else {
-                        await _securityService.removePasscode();
-                        _loadSettings();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => PasscodeScreen(
+                              mode: PasscodeMode.unlockApp,
+                              customTitle: "Enter Passcode to Disable App Lock",
+                              onSuccess: () async {
+                                await _securityService.removePasscode();
+                                if (context.mounted) {
+                                  Navigator.of(context).pop();
+                                  _loadSettings();
+                                }
+                              },
+                              onCancel: () => Navigator.of(context).pop(),
+                            ),
+                          ),
+                        );
                       }
                     },
                   ),

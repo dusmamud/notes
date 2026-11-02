@@ -82,15 +82,10 @@ class _PremiumSheetState extends State<PremiumSheet> {
   }
 
   void _purchasePremium() async {
-    setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(milliseconds: 1000));
-    setState(() => _isProcessing = false);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("🎉 Welcome to Notes Premium! All features unlocked."),
-          backgroundColor: AppColors.accentGold,
+          content: Text("Google Play In-App Purchases will activate in the production store release."),
         ),
       );
       Navigator.pop(context);
@@ -98,14 +93,10 @@ class _PremiumSheetState extends State<PremiumSheet> {
   }
 
   void _restorePurchases() async {
-    setState(() => _isProcessing = true);
-    await Future.delayed(const Duration(milliseconds: 800));
-    setState(() => _isProcessing = false);
-
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("No previous active subscription found for this account."),
+          content: Text("Subscription restoration will connect to Google Play in the store release."),
         ),
       );
     }

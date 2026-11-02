@@ -53,13 +53,15 @@ dependencies:
   pdfrx: ^2.4.8
   printing: ^5.15.1
   image_picker: ^1.1.2
+  file_picker: ^10.2.4
   flutter_image_compress: ^2.4.0
   open_filex: ^5.0.0
   archive: ^4.6.0
 
-  # Security & Biometrics
+  # Security, Crypto & Biometrics
   local_auth: ^3.0.2
   encrypt: ^5.0.3
+  crypto: ^3.0.6
 
   # Web & Link Previews
   webview_flutter: ^4.10.0

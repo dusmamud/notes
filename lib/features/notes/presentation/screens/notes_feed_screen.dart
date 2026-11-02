@@ -1,11 +1,17 @@
+import 'dart:io';
+import 'package:cunning_document_scanner/cunning_document_scanner.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:pull_down_button/pull_down_button.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/security/security_service.dart';
+import '../../../../core/security/passcode_screen.dart';
 import '../../../../core/services/widget_sync_service.dart';
 import '../../../folders/presentation/screens/folders_screen.dart';
 import '../../../folders/presentation/widgets/move_to_folder_sheet.dart';
@@ -115,6 +121,29 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
           updatedAt: DateTime.now(),
         );
 
+    // Enforce per-note security challenge
+    if (note != null && note.isLocked) {
+      final sec = SecurityService();
+      final hasPasscode = await sec.hasPasscode();
+      if (!mounted) return;
+      if (hasPasscode) {
+        final authorized = await Navigator.of(context).push<bool>(
+          MaterialPageRoute(
+            builder: (_) => PasscodeScreen(
+              mode: PasscodeMode.unlockNote,
+              customTitle: "Enter Passcode to View Locked Note",
+              onSuccess: () => Navigator.of(context).pop(true),
+              onCancel: () => Navigator.of(context).pop(false),
+            ),
+          ),
+        );
+        if (authorized != true) return;
+      } else {
+        final bioOk = await sec.authenticateWithBiometrics(reason: "Unlock Note");
+        if (!bioOk) return;
+      }
+    }
+
     if (isTablet) {
       if (noteToEdit.id == 0) {
         await widget.repository.saveNote(noteToEdit);
@@ -124,6 +153,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
       return;
     }
 
+    if (!mounted) return;
     await Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => NoteEditorScreen(
@@ -197,6 +227,11 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     );
   }
 
+  void _toggleBatchPin() {
+    final anyPinned = _pinnedNotes.any((n) => _selectedIds.contains(n.id));
+    _batchPin(!anyPinned);
+  }
+
   void _batchPin(bool pin) async {
     for (var id in _selectedIds) {
       await widget.repository.pinNote(id, pin);
@@ -265,6 +300,10 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
           });
           break;
         case NoteContextAction.share:
+          SharePlus.instance.share(ShareParams(
+            text: note.contentMarkdown,
+            subject: note.title.isEmpty ? "Note" : note.title,
+          ));
           break;
         case NoteContextAction.trash:
           _deleteNote(note);
@@ -351,7 +390,8 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               icon: const Icon(Icons.folder_outlined),
               tooltip: "Folders",
               onPressed: () async {
-                await Navigator.of(context).push(
+                if (!mounted) return;
+    await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => FoldersScreen(repository: widget.repository),
                   ),
@@ -574,9 +614,11 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.push_pin_rounded),
+                  icon: Icon(_pinnedNotes.any((n) => _selectedIds.contains(n.id))
+                      ? Icons.push_pin_outlined
+                      : Icons.push_pin_rounded),
                   tooltip: "Pin / Unpin",
-                  onPressed: _selectedIds.isNotEmpty ? () => _batchPin(true) : null,
+                  onPressed: _selectedIds.isNotEmpty ? _toggleBatchPin : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.folder_outlined),
@@ -607,7 +649,21 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
             _openEditor(null, "\n$memo\n", isTablet);
           });
         },
-        onScanDocument: () => _openEditor(null, "\n📄 [Scanned Document PDF]\n", isTablet),
+        onScanDocument: () async {
+          try {
+            final pictures = await CunningDocumentScanner.getPictures(noOfPages: 50, asPdf: true);
+            if (pictures != null && pictures.isNotEmpty) {
+              final dir = await getApplicationDocumentsDirectory();
+              final dest = File('${dir.path}/scan_${DateTime.now().millisecondsSinceEpoch}.pdf');
+              await File(pictures.first).copy(dest.path);
+              _openEditor(null, "\n[📄 Scanned Document (${dest.path.split(Platform.pathSeparator).last})](${dest.path})\n", isTablet);
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Scan Error: $e")));
+            }
+          }
+        },
       ),
     );
   }

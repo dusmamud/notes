@@ -1,11 +1,20 @@
+import 'dart:io';
+import 'package:cunning_document_scanner/cunning_document_scanner.dart';
+import 'package:easy_debounce/easy_debounce.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:pull_down_button/pull_down_button.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/services/markdown_table_helper.dart';
 import '../../../../core/services/math_notes_engine.dart';
 import '../../data/models/note_entity.dart';
 import '../../domain/repositories/note_repository.dart';
@@ -57,22 +66,39 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _titleController = TextEditingController(text: widget.note.title);
     _contentController = TextEditingController(text: widget.note.contentMarkdown);
     _contentController.addListener(_onContentChanged);
+    _titleController.addListener(_onTitleChanged);
   }
 
   @override
   void dispose() {
+    EasyDebounce.cancel('note_editor_save');
+    EasyDebounce.cancel('note_editor_undo');
     _contentController.removeListener(_onContentChanged);
+    _titleController.removeListener(_onTitleChanged);
     _titleController.dispose();
     _contentController.dispose();
     _editorFocusNode.dispose();
     super.dispose();
   }
 
+  void _onTitleChanged() {
+    EasyDebounce.debounce('note_editor_save', const Duration(milliseconds: 400), () {
+      _autoSave();
+    });
+  }
+
   void _onContentChanged() {
     final text = _contentController.text;
     _checkTypingTriggers(text);
     _checkMathTriggers(text);
-    _autoSave();
+    // Track typing in undo stack with debounce coalescing
+    EasyDebounce.debounce('note_editor_undo', const Duration(milliseconds: 800), () {
+      _recordUndoState();
+    });
+    // Auto-save with 400ms debounce
+    EasyDebounce.debounce('note_editor_save', const Duration(milliseconds: 400), () {
+      _autoSave();
+    });
   }
 
   void _checkTypingTriggers(String text) {
@@ -240,43 +266,131 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   }
 
   void _openAttachmentSheet() {
-    AttachmentSelectorSheet.show(context, (action) {
+    AttachmentSelectorSheet.show(context, (action) async {
       switch (action) {
         case AttachmentAction.scanDocument:
-          _insertFormatting("\n📄 [Scanned Document PDF]\n");
+          try {
+            final pictures = await CunningDocumentScanner.getPictures(
+              noOfPages: 50,
+              asPdf: true,
+            );
+            if (pictures != null && pictures.isNotEmpty) {
+              final dir = await getApplicationDocumentsDirectory();
+              final dest = File('${dir.path}/scanned_${DateTime.now().millisecondsSinceEpoch}.pdf');
+              await File(pictures.first).copy(dest.path);
+              _insertFormatting("\n[📄 Scanned Document (${dest.path.split(Platform.pathSeparator).last})](${dest.path})\n");
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Document Scanner: $e")),
+              );
+            }
+          }
           break;
         case AttachmentAction.takePhoto:
-          _insertFormatting("\n📷 [Camera Photo]\n");
+          try {
+            final picker = ImagePicker();
+            final photo = await picker.pickImage(source: ImageSource.camera);
+            if (photo != null) {
+              final dir = await getApplicationDocumentsDirectory();
+              final dest = File('${dir.path}/photo_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await File(photo.path).copy(dest.path);
+              _insertFormatting("\n![Camera Photo](${dest.path})\n");
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Camera: $e")),
+              );
+            }
+          }
           break;
         case AttachmentAction.photoLibrary:
-          _insertFormatting("\n🖼️ [Photo Gallery Attachment]\n");
+          try {
+            final picker = ImagePicker();
+            final image = await picker.pickImage(source: ImageSource.gallery);
+            if (image != null) {
+              final dir = await getApplicationDocumentsDirectory();
+              final dest = File('${dir.path}/gallery_${DateTime.now().millisecondsSinceEpoch}.jpg');
+              await File(image.path).copy(dest.path);
+              _insertFormatting("\n![Photo Gallery](${dest.path})\n");
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("Gallery: $e")),
+              );
+            }
+          }
           break;
         case AttachmentAction.recordAudio:
           AudioRecordingModal.show(context, (memo) {
-            _insertFormatting("\n$memo\n");
+            _insertFormatting(memo);
           });
           break;
         case AttachmentAction.chooseFile:
-          _insertFormatting("\n📁 [Attached Document]\n");
+          try {
+            final result = await FilePicker.platform.pickFiles();
+            if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
+              final src = File(result.files.single.path!);
+              final dir = await getApplicationDocumentsDirectory();
+              final name = result.files.single.name;
+              final dest = File('${dir.path}/file_${DateTime.now().millisecondsSinceEpoch}_$name');
+              await src.copy(dest.path);
+              _insertFormatting("\n[📁 $name](${dest.path})\n");
+            }
+          } catch (e) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text("File Picker: $e")),
+              );
+            }
+          }
           break;
       }
     });
   }
 
   void _handleTableAction(TableActionType type) {
+    _recordUndoState();
+    final text = _contentController.text;
+    final cursor = _contentController.selection.baseOffset;
     switch (type) {
       case TableActionType.addColumnLeft:
       case TableActionType.addColumnRight:
-        _insertFormatting(" | Col New");
+        final newText = MarkdownTableHelper.addColumn(text, cursor);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
+        );
         break;
       case TableActionType.addRowAbove:
+        final newText = MarkdownTableHelper.addRow(text, cursor, below: false);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
+        );
+        break;
       case TableActionType.addRowBelow:
-        _insertFormatting("\n| Item | Item |");
+        final newText = MarkdownTableHelper.addRow(text, cursor, below: true);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
+        );
         break;
       case TableActionType.deleteColumn:
+        final newText = MarkdownTableHelper.deleteCurrentColumn(text, cursor);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
+        );
+        break;
       case TableActionType.deleteRow:
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Selected column/row removed")),
+        final newText = MarkdownTableHelper.deleteCurrentRow(text, cursor);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
         );
         break;
       case TableActionType.reverseDirection:
@@ -285,26 +399,48 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         });
         break;
       case TableActionType.convertToText:
-        final current = _contentController.text;
-        final converted = current.replaceAll('|', ' ').replaceAll('---', '');
-        _contentController.text = converted;
-        break;
-      case TableActionType.copyTable:
-        Clipboard.setData(ClipboardData(text: _contentController.text));
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Table copied to clipboard")),
+        final newText = MarkdownTableHelper.convertTableToText(text, cursor);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
         );
         break;
+      case TableActionType.copyTable:
+        final tableText = MarkdownTableHelper.copyTableOnly(text, cursor);
+        if (tableText != null) {
+          Clipboard.setData(ClipboardData(text: tableText));
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Table copied to clipboard")),
+          );
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Cursor is not inside a table")),
+          );
+        }
+        break;
       case TableActionType.shareTable:
-        SharePlus.instance.share(ShareParams(
-          text: _contentController.text,
-          subject: widget.note.title,
-        ));
+        final tableText = MarkdownTableHelper.copyTableOnly(text, cursor);
+        if (tableText != null) {
+          SharePlus.instance.share(ShareParams(
+            text: tableText,
+            subject: "${widget.note.title} Table",
+          ));
+        } else {
+          SharePlus.instance.share(ShareParams(
+            text: _contentController.text,
+            subject: widget.note.title,
+          ));
+        }
         break;
       case TableActionType.deleteTable:
-        _insertFormatting("");
+        final newText = MarkdownTableHelper.deleteEntireTable(text, cursor);
+        _contentController.value = TextEditingValue(
+          text: newText,
+          selection: TextSelection.collapsed(offset: cursor.clamp(0, newText.length)),
+        );
         break;
     }
+    _autoSave();
   }
 
   void _handleListStructure(ListStructureType type) {
@@ -349,6 +485,11 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     }
   }
 
+  String _colorToHex(Color c) {
+    final rgb = (c.toARGB32() & 0x00FFFFFF).toRadixString(16).padLeft(6, '0');
+    return "#$rgb";
+  }
+
   void _handleInlineFormat(String format) {
     switch (format) {
       case 'bold':
@@ -366,6 +507,57 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
       case 'code':
         _insertFormatting("`", "`");
         break;
+    }
+  }
+
+  Future<void> _exportAsPdf() async {
+    try {
+      final pdf = pw.Document();
+      final titleText = widget.note.title.isNotEmpty ? widget.note.title : 'Untitled Note';
+      final content = _contentController.text;
+
+      pdf.addPage(
+        pw.MultiPage(
+          pageFormat: PdfPageFormat.a4,
+          margin: const pw.EdgeInsets.all(32),
+          build: (pw.Context ctx) => [
+            pw.Header(
+              level: 0,
+              child: pw.Text(
+                titleText,
+                style: pw.TextStyle(fontSize: 22, fontWeight: pw.FontWeight.bold),
+              ),
+            ),
+            pw.Text(
+              "Updated: ${widget.note.updatedAt.toString().split('.')[0]}",
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey700),
+            ),
+            pw.Divider(thickness: 0.5),
+            pw.SizedBox(height: 12),
+            pw.Paragraph(
+              text: content,
+              style: const pw.TextStyle(fontSize: 12, lineSpacing: 1.4),
+            ),
+          ],
+        ),
+      );
+
+      final bytes = await pdf.save();
+      final dir = await getTemporaryDirectory();
+      final safeTitle = titleText.replaceAll(RegExp(r'[\\/:*?"<>|]'), '_');
+      final file = File('${dir.path}/$safeTitle.pdf');
+      await file.writeAsBytes(bytes);
+
+      await SharePlus.instance.share(ShareParams(
+        files: [XFile(file.path)],
+        subject: "$safeTitle.pdf",
+      ));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("PDF Export Error: $e")),
+        );
+      }
     }
   }
 
@@ -389,13 +581,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.picture_as_pdf_rounded),
-              title: const Text("Export as PDF"),
+              title: const Text("Export as PDF (Real Compiled Document)"),
               onTap: () {
                 Navigator.pop(ctx);
-                SharePlus.instance.share(ShareParams(
-                  text: "${widget.note.title}\n\n${_contentController.text}",
-                  subject: "${widget.note.title}.pdf",
-                ));
+                _exportAsPdf();
               },
             ),
             ListTile(
@@ -426,10 +615,22 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         ? Color(widget.note.colorValue!)
         : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
 
-    return KeyboardListener(
-      focusNode: _editorFocusNode,
-      onKeyEvent: _handleHardwareKey,
-      child: PopScope(
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true): () => _handleInlineFormat('bold'),
+        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () => _handleInlineFormat('italic'),
+        const SingleActivator(LogicalKeyboardKey.keyU, control: true): () => _handleInlineFormat('underline'),
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          setState(() => _showFindAndReplace = true);
+        },
+      },
+      child: KeyboardListener(
+        focusNode: _editorFocusNode,
+        onKeyEvent: _handleHardwareKey,
+        child: PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, _) async {
           if (didPop) {
@@ -577,12 +778,12 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 EditorFormatPanel(
                   onParagraphStyle: _handleParagraphStyle,
                   onInlineFormat: _handleInlineFormat,
-                  onTextColor: (c) => _insertFormatting("<span style='color:${c.toARGB32()}'>", "</span>"),
+                  onTextColor: (c) => _insertFormatting("<span style='color:${_colorToHex(c)}'>", "</span>"),
                   onHighlightColor: (c) {
                     if (c == null) {
                       _insertFormatting("");
                     } else {
-                      _insertFormatting("<mark style='background:${c.toARGB32()}'>", "</mark>");
+                      _insertFormatting("<mark style='background-color:${_colorToHex(c)}'>", "</mark>");
                     }
                   },
                   onTextAlign: (align) {
@@ -667,8 +868,9 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   Widget _buildKeyboardAccessoryToolbar(bool isDark) {
     return Container(

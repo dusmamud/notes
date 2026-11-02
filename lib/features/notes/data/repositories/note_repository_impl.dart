@@ -64,13 +64,17 @@ class NoteRepositoryImpl implements NoteRepository {
       }).toList();
       await prefs.setString('saved_notes_data', jsonEncode(data));
 
-      final activeNotes = _notes.where((n) => !n.isTrash && !n.isArchived).toList();
-      if (activeNotes.isNotEmpty) {
-        final top = activeNotes.first;
+      final activeUnlockedNotes = _notes.where((n) => !n.isTrash && !n.isArchived && !n.isLocked).toList();
+      if (activeUnlockedNotes.isNotEmpty) {
+        final top = activeUnlockedNotes.first;
         await prefs.setInt('widget_default_note_id', top.id);
         await prefs.setString('widget_default_title', top.title.isNotEmpty ? top.title : 'Notes');
         await prefs.setString('widget_default_body', top.contentMarkdown);
         await prefs.setString('widget_default_date', '${top.updatedAt.day}/${top.updatedAt.month}/${top.updatedAt.year}');
+      } else {
+        await prefs.remove('widget_default_note_id');
+        await prefs.setString('widget_default_title', 'Notes');
+        await prefs.setString('widget_default_body', 'No unlocked notes');
       }
       await WidgetSyncService.updateWidgets();
     } catch (_) {}

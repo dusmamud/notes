@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 
 class FindAndReplaceBar extends StatefulWidget {
@@ -18,8 +19,8 @@ class FindAndReplaceBar extends StatefulWidget {
 class _FindAndReplaceBarState extends State<FindAndReplaceBar> {
   final TextEditingController _findController = TextEditingController();
   final TextEditingController _replaceController = TextEditingController();
-  int _matchCount = 0;
-  int _currentMatchIndex = 0;
+  List<Match> _matches = [];
+  int _currentMatchIndex = 0; // 0 means no match, 1-based index when matched
 
   @override
   void initState() {
@@ -38,30 +39,59 @@ class _FindAndReplaceBarState extends State<FindAndReplaceBar> {
     final query = _findController.text;
     if (query.isEmpty) {
       setState(() {
-        _matchCount = 0;
+        _matches = [];
         _currentMatchIndex = 0;
       });
       return;
     }
     final text = widget.contentController.text;
-    final matches = RegExp(RegExp.escape(query), caseSensitive: false).allMatches(text);
+    final all = RegExp(RegExp.escape(query), caseSensitive: false).allMatches(text).toList();
     setState(() {
-      _matchCount = matches.length;
-      _currentMatchIndex = _matchCount > 0 ? 1 : 0;
+      _matches = all;
+      _currentMatchIndex = all.isNotEmpty ? 1 : 0;
     });
+    if (all.isNotEmpty) {
+      _highlightMatch(0);
+    }
   }
 
-  void _replaceFirst() {
-    final find = _findController.text;
+  void _highlightMatch(int matchIdx) {
+    if (matchIdx < 0 || matchIdx >= _matches.length) return;
+    final m = _matches[matchIdx];
+    widget.contentController.selection = TextSelection(
+      baseOffset: m.start,
+      extentOffset: m.end,
+    );
+  }
+
+  void _nextMatch() {
+    if (_matches.isEmpty) return;
+    int nextIdx = _currentMatchIndex; // 1-based to 0-based is current - 1 + 1 = current
+    if (nextIdx >= _matches.length) nextIdx = 0;
+    setState(() {
+      _currentMatchIndex = nextIdx + 1;
+    });
+    _highlightMatch(nextIdx);
+  }
+
+  void _prevMatch() {
+    if (_matches.isEmpty) return;
+    int prevIdx = _currentMatchIndex - 2;
+    if (prevIdx < 0) prevIdx = _matches.length - 1;
+    setState(() {
+      _currentMatchIndex = prevIdx + 1;
+    });
+    _highlightMatch(prevIdx);
+  }
+
+  void _replaceCurrent() {
+    if (_matches.isEmpty || _currentMatchIndex < 1) return;
     final replace = _replaceController.text;
-    if (find.isEmpty) return;
     final text = widget.contentController.text;
-    final match = RegExp(RegExp.escape(find), caseSensitive: false).firstMatch(text);
-    if (match != null) {
-      final newText = text.replaceRange(match.start, match.end, replace);
-      widget.contentController.text = newText;
-      _onSearchChanged();
-    }
+    final match = _matches[_currentMatchIndex - 1];
+    final newText = text.replaceRange(match.start, match.end, replace);
+    widget.contentController.text = newText;
+    _onSearchChanged();
   }
 
   void _replaceAll() {
@@ -106,9 +136,26 @@ class _FindAndReplaceBarState extends State<FindAndReplaceBar> {
                 ),
               ),
               const SizedBox(width: 8),
-              Text("$_currentMatchIndex/$_matchCount", style: AppTypography.captionSmall),
+              Text(
+                "$_currentMatchIndex/${_matches.length}",
+                style: AppTypography.captionSmall.copyWith(
+                  color: _matches.isNotEmpty ? AppColors.accentGold : null,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_up_rounded),
+                tooltip: "Previous match",
+                onPressed: _matches.length > 1 ? _prevMatch : null,
+              ),
+              IconButton(
+                icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                tooltip: "Next match",
+                onPressed: _matches.length > 1 ? _nextMatch : null,
+              ),
               IconButton(
                 icon: const Icon(Icons.close_rounded),
+                tooltip: "Close",
                 onPressed: widget.onClose,
               ),
             ],
@@ -129,12 +176,13 @@ class _FindAndReplaceBarState extends State<FindAndReplaceBar> {
                 ),
               ),
               const SizedBox(width: 8),
-              TextButton(
-                onPressed: _matchCount > 0 ? _replaceFirst : null,
+              FilledButton.tonal(
+                onPressed: _matches.isNotEmpty ? _replaceCurrent : null,
                 child: const Text("Replace"),
               ),
-              TextButton(
-                onPressed: _matchCount > 0 ? _replaceAll : null,
+              const SizedBox(width: 6),
+              FilledButton.tonal(
+                onPressed: _matches.isNotEmpty ? _replaceAll : null,
                 child: const Text("All"),
               ),
             ],
@@ -144,4 +192,3 @@ class _FindAndReplaceBarState extends State<FindAndReplaceBar> {
     );
   }
 }
-

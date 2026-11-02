@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -27,51 +30,131 @@ class AudioRecordingModal extends StatefulWidget {
 }
 
 class _AudioRecordingModalState extends State<AudioRecordingModal> {
-  bool _isRecording = true;
+  final AudioRecorder _audioRecorder = AudioRecorder();
+  bool _isRecording = false;
+  bool _isPaused = false;
+  String? _recordingPath;
   int _secondsElapsed = 0;
   Timer? _timer;
-  final List<double> _waveformData = [0.2, 0.4, 0.7, 0.9, 0.5, 0.3, 0.6, 0.8, 0.4, 0.2];
+  Timer? _ampTimer;
+  final List<double> _waveformData = List.filled(15, 0.1);
+  String? _errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _startTimer();
+    _startActualRecording();
   }
 
   @override
   void dispose() {
     _timer?.cancel();
+    _ampTimer?.cancel();
+    _audioRecorder.dispose();
     super.dispose();
   }
 
-  void _startTimer() {
-    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (_isRecording) {
+  Future<void> _startActualRecording() async {
+    try {
+      final hasPermission = await _audioRecorder.hasPermission();
+      if (!hasPermission) {
+        if (mounted) {
+          setState(() {
+            _errorMessage = "Microphone permission required for audio recording.";
+          });
+        }
+        return;
+      }
+
+      final dir = await getApplicationDocumentsDirectory();
+      final path = '${dir.path}/audio_memo_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      _recordingPath = path;
+
+      await _audioRecorder.start(
+        const RecordConfig(encoder: AudioEncoder.aacLc, bitRate: 128000, sampleRate: 44100),
+        path: path,
+      );
+
+      if (mounted) {
         setState(() {
-          _secondsElapsed++;
-          // Shift and simulate active microphone levels
-          _waveformData.removeAt(0);
-          _waveformData.add(0.2 + (0.7 * ((_secondsElapsed % 5) / 5.0)));
+          _isRecording = true;
+          _isPaused = false;
         });
+        _startTimer();
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = "Could not start audio recorder: $e";
+        });
+      }
+    }
+  }
+
+  void _startTimer() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isRecording && !_isPaused) {
+        setState(() => _secondsElapsed++);
+      }
+    });
+
+    _ampTimer?.cancel();
+    _ampTimer = Timer.periodic(const Duration(milliseconds: 150), (timer) async {
+      if (_isRecording && !_isPaused) {
+        try {
+          final amp = await _audioRecorder.getAmplitude();
+          final currentDb = amp.current; // typically -60 to 0 dB
+          final normalized = ((currentDb + 50) / 50).clamp(0.1, 1.0);
+          if (mounted) {
+            setState(() {
+              _waveformData.removeAt(0);
+              _waveformData.add(normalized);
+            });
+          }
+        } catch (_) {}
       }
     });
   }
 
-  void _togglePause() {
+  Future<void> _togglePause() async {
     HapticFeedback.selectionClick();
-    setState(() => _isRecording = !_isRecording);
+    if (_isPaused) {
+      await _audioRecorder.resume();
+      setState(() => _isPaused = false);
+    } else {
+      await _audioRecorder.pause();
+      setState(() => _isPaused = true);
+    }
   }
 
-  void _saveRecording() {
+  Future<void> _saveRecording() async {
     HapticFeedback.lightImpact();
-    final durationStr = _formatDuration(_secondsElapsed);
-    widget.onRecordingComplete("🎙️ Audio Memo ($durationStr)");
-    Navigator.of(context).pop();
+    _timer?.cancel();
+    _ampTimer?.cancel();
+    final path = await _audioRecorder.stop();
+    final finalPath = path ?? _recordingPath;
+    if (finalPath != null && mounted) {
+      final durationStr = _formatDuration(_secondsElapsed);
+      widget.onRecordingComplete("\n[🎙️ Voice Memo ($durationStr)]($finalPath)\n");
+      Navigator.of(context).pop();
+    }
   }
 
-  void _cancelRecording() {
+  Future<void> _cancelRecording() async {
     HapticFeedback.lightImpact();
-    Navigator.of(context).pop();
+    _timer?.cancel();
+    _ampTimer?.cancel();
+    try {
+      await _audioRecorder.cancel();
+      if (_recordingPath != null) {
+        final f = File(_recordingPath!);
+        if (await f.exists()) await f.delete();
+      }
+    } catch (_) {}
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   String _formatDuration(int sec) {
@@ -99,58 +182,72 @@ class _AudioRecordingModalState extends State<AudioRecordingModal> {
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.center,
           children: [
+            // Handle Bar
             Container(
               width: 36,
-              height: 5,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
               decoration: BoxDecoration(
-                color: isDark ? Colors.white24 : Colors.black26,
-                borderRadius: BorderRadius.circular(2.5),
+                color: isDark ? Colors.white24 : Colors.black12,
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            SizedBox(height: AppDimensions.paddingMedium),
+
             Text(
-              _isRecording ? "Recording Audio Memo" : "Recording Paused",
+              "Voice Memo",
               style: AppTypography.headingSmall,
             ),
             const SizedBox(height: 8),
-            Text(
-              _formatDuration(_secondsElapsed),
-              style: AppTypography.headingLarge.copyWith(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.tagCoral,
+
+            if (_errorMessage != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Text(
+                  _errorMessage!,
+                  style: AppTypography.bodySmall.copyWith(color: AppColors.tagCoral),
+                  textAlign: TextAlign.center,
+                ),
+              )
+            else
+              Text(
+                _formatDuration(_secondsElapsed),
+                style: AppTypography.headingLarge.copyWith(
+                  fontSize: 36,
+                  color: AppColors.accentGold,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
               ),
-            ),
             const SizedBox(height: 24),
+
             // Live Waveform Visualizer
             SizedBox(
               height: 60,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: _waveformData.map((heightFactor) {
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: _waveformData.map((amp) {
                   return AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: const Duration(milliseconds: 120),
                     margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: 6,
-                    height: 50 * heightFactor,
+                    width: 4,
+                    height: 60 * amp,
                     decoration: BoxDecoration(
-                      color: _isRecording ? AppColors.tagCoral : Colors.grey,
-                      borderRadius: BorderRadius.circular(3),
+                      color: _isPaused ? Colors.grey : AppColors.accentGold,
+                      borderRadius: BorderRadius.circular(2),
                     ),
                   );
                 }).toList(),
               ),
             ),
             const SizedBox(height: 32),
+
+            // Controls
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.delete_outline_rounded),
-                  iconSize: 32,
-                  color: Colors.grey,
+                  icon: const Icon(Icons.delete_outline_rounded, size: 28),
                   tooltip: "Discard",
                   onPressed: _cancelRecording,
                 ),
@@ -161,22 +258,20 @@ class _AudioRecordingModalState extends State<AudioRecordingModal> {
                     height: 64,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: AppColors.tagCoral.withValues(alpha: 0.15),
-                      border: Border.all(color: AppColors.tagCoral, width: 2),
+                      color: AppColors.accentGold,
                     ),
                     child: Icon(
-                      _isRecording ? Icons.pause_rounded : Icons.mic_rounded,
-                      color: AppColors.tagCoral,
-                      size: 32,
+                      _isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
+                      size: 36,
+                      color: Colors.black,
                     ),
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.check_circle_rounded),
-                  iconSize: 36,
-                  color: AppColors.accentTeal,
-                  tooltip: "Save to Note",
-                  onPressed: _saveRecording,
+                  icon: const Icon(Icons.check_circle_rounded, size: 32),
+                  color: AppColors.tagForest,
+                  tooltip: "Save",
+                  onPressed: _secondsElapsed > 0 ? _saveRecording : null,
                 ),
               ],
             ),
@@ -187,4 +282,3 @@ class _AudioRecordingModalState extends State<AudioRecordingModal> {
     );
   }
 }
-

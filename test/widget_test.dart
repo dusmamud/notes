@@ -1,11 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:note/core/security/security_service.dart';
+import 'package:note/core/services/markdown_table_helper.dart';
 import 'package:note/core/services/math_notes_engine.dart';
 import 'package:note/features/notes/data/models/note_entity.dart';
 import 'package:note/features/notes/data/repositories/note_repository_impl.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+
   test('MathNotesEngine arithmetic evaluation test', () {
     final engine = MathNotesEngine(mode: MathResultsMode.suggest);
     final result = engine.evaluateLine('125 * 4 =');
@@ -74,5 +77,57 @@ void main() {
     expect(original.isPinned, true);
     expect(original.colorValue, 0xFFFEEBC8);
     expect(original.contentMarkdown.contains('TileService'), true);
+  });
+
+  test('MarkdownTableHelper table manipulation test', () {
+    const table = "| Col 1 | Col 2 |\n|---|---|\n| Val 1 | Val 2 |\n";
+    final region = MarkdownTableHelper.parseTableAt(table, 10);
+    expect(region, isNotNull);
+    expect(region!.lines.length, 3);
+
+    // Test add row below
+    final withNewRow = MarkdownTableHelper.addRow(table, 10, below: true);
+    expect(withNewRow.contains('| Item | Item |'), true);
+
+    // Test add column
+    final withNewCol = MarkdownTableHelper.addColumn(table, 10);
+    expect(withNewCol.contains('| NewCol |'), true);
+
+    // Test convert to text
+    final textOnly = MarkdownTableHelper.convertTableToText(table, 10);
+    expect(textOnly.contains('|'), false);
+    expect(textOnly.contains('Col 1'), true);
+
+    // Test copy table only
+    final copied = MarkdownTableHelper.copyTableOnly(table, 10);
+    expect(copied, table.trim());
+  });
+
+  test('SecurityService cryptographic hashing, rate limit and AES encryption test', () async {
+    SharedPreferences.setMockInitialValues({});
+    final sec = SecurityService();
+
+    // Verify fail closed when no passcode
+    final noCode = await sec.verifyPasscode('1234');
+    expect(noCode, false);
+
+    // Set passcode
+    await sec.setPasscode('1234');
+    expect(await sec.hasPasscode(), true);
+
+    // Correct passcode verification
+    expect(await sec.verifyPasscode('1234'), true);
+
+    // Incorrect passcode verification
+    expect(await sec.verifyPasscode('0000'), false);
+
+    // AES encryption and decryption test
+    const plain = "Confidential Note Data";
+    final encrypted = sec.encryptNoteContent(plain, "mySecretKey123");
+    expect(encrypted != plain, true);
+    expect(encrypted.contains(':'), true);
+
+    final decrypted = sec.decryptNoteContent(encrypted, "mySecretKey123");
+    expect(decrypted, plain);
   });
 }
