@@ -63,6 +63,34 @@ subprojects {
     } else {
         afterEvaluate { setJava17FromExtension() }
     }
+    // Run #30 fix: :objectbox_flutter_libs 4.1.0 hardcodes compileSdkVersion 31
+    // in its own android/build.gradle, but its transitive AndroidX deps
+    // (fragment 1.7.1, window 1.2.0, lifecycle 2.7.0, core 1.13.1, ...) require
+    // compileSdk 34+, so :objectbox_flutter_libs:checkReleaseAarMetadata fails
+    // with 20 issues. Upgrading objectbox to 5.x is NOT a one-line fix: it
+    // forces objectbox_generator 5.x, which needs build >= 4 / analyzer >= 8 /
+    // source_gen 4, conflicting with build_runner 2.4.13, and 5.x requires a
+    // build_runner regeneration (generatorVersion) even though this app never
+    // opens an ObjectBox Store (storage is SharedPreferences JSON). So pin
+    // only this library's compileSdk to 36, matching the app's Flutter 3.44
+    // compileSdk, using the same guarded afterEvaluate pattern as the JVM pin
+    // above. This changes no targetSdk, minSdk, feature, or Dart code.
+    val setObjectboxCompileSdk36: Project.() -> Unit = {
+        if (project.name == "objectbox_flutter_libs") {
+            val androidExt = extensions.findByName("android")
+            if (androidExt is com.android.build.api.dsl.CommonExtension) {
+                androidExt.compileSdk = 36
+            } else if (androidExt is com.android.build.gradle.BaseExtension) {
+                @Suppress("DEPRECATION")
+                androidExt.compileSdkVersion = 36
+            }
+        }
+    }
+    if (project.state.executed) {
+        setObjectboxCompileSdk36()
+    } else {
+        afterEvaluate { setObjectboxCompileSdk36() }
+    }
 }
 
 tasks.register<Delete>("clean") {
