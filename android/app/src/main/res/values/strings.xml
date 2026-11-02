@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Notes</string>
+    <string name="quick_note_tile_label">Quick Note</string>
+    <string name="widget_note_label">Note</string>
+    <string name="widget_folder_label">Folder</string>
+    <string name="widget_plain_note_label">Plain Note</string>
+    <string name="widget_capture_label">Capture</string>
     <string name="widget_capture_camera">Take Photo or Video</string>
     <string name="widget_capture_checklist">New Checklist</string>
     <string name="widget_capture_description">Starts a note, checklist, recording, photo or scan in one tap.</string>

@@ -15,4 +15,11 @@
     <style name="NormalTheme" parent="@android:style/Theme.Light.NoTitleBar">
         <item name="android:windowBackground">?android:colorBackground</item>
     </style>
+    <!-- Theme for the widget configuration activity (WidgetConfigureActivity,
+         a plain Activity using widget_edit_card). Was referenced by
+         AndroidManifest.xml but never defined, breaking AAPT resource
+         linking in run #24. -->
+    <style name="Theme.WidgetEdit" parent="@android:style/Theme.Light.NoTitleBar">
+        <item name="android:windowBackground">?android:colorBackground</item>
+    </style>
 </resources>
