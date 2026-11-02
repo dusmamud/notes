@@ -55,12 +55,16 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
 
   Future<void> _pickCustomFont() async {
     try {
-      final result = await FilePicker.platform.pickFiles(
+      // file_picker 12+ breaking change (CI run #39): FilePicker.platform
+      // and FilePickerResult are gone. pickFile() is the single-file API
+      // in 13.x and returns PlatformFile? directly (same pattern already
+      // used in note_editor_screen.dart).
+      final picked = await FilePicker.pickFile(
         type: FileType.custom,
         allowedExtensions: ['ttf', 'otf'],
       );
-      if (result != null && result.files.single.path != null) {
-        final path = result.files.single.path!;
+      if (picked != null && picked.path != null) {
+        final path = picked.path!;
         final fontBytes = await File(path).readAsBytes();
         final fontLoader = FontLoader('CustomNoteFont_${DateTime.now().millisecondsSinceEpoch}');
         fontLoader.addFont(Future.value(ByteData.view(fontBytes.buffer)));
