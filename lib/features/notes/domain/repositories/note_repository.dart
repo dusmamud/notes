@@ -6,10 +6,12 @@ abstract class NoteRepository {
   Future<List<NoteEntity>> getAllNotes();
   Future<List<NoteEntity>> getPinnedNotes();
   Future<List<NoteEntity>> getTrashNotes();
+  Future<List<NoteEntity>> getTrashedNotes();
   Future<NoteEntity?> getNoteById(int id);
   Future<int> saveNote(NoteEntity note);
   Future<void> deleteNote(int id, {bool permanent = false});
   Future<void> restoreNote(int id);
+  Future<void> emptyTrash();
   Future<void> pinNote(int id, bool isPinned);
   Future<List<FolderEntity>> getAllFolders();
   Future<int> saveFolder(FolderEntity folder);

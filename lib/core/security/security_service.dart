@@ -1,9 +1,14 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:pointycastle/key_derivators/pbkdf2.dart';
+import 'package:pointycastle/key_derivators/api.dart';
+import 'package:pointycastle/macs/hmac.dart';
+import 'package:pointycastle/digests/sha256.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SecurityService {
@@ -15,13 +20,25 @@ class SecurityService {
   static const String _failedAttemptsKey = 'app_passcode_failed_attempts';
   static const String _lockoutTimestampKey = 'app_passcode_lockout_until';
 
+  // Separate Note Lock credentials
+  static const String _notePasswordHashKey = 'note_lock_password_hash';
+  static const String _notePasswordSaltKey = 'note_lock_password_salt';
+
   static const int maxAttempts = 5;
   static const int lockoutDurationSeconds = 30;
+  static const int pbkdf2Iterations = 10000;
+  static const int pbkdf2KeyLength = 32;
 
-  String _generateSalt() {
+  String _generateSalt([int length = 16]) {
     final random = Random.secure();
-    final values = List<int>.generate(16, (i) => random.nextInt(256));
+    final values = List<int>.generate(length, (i) => random.nextInt(256));
     return base64Url.encode(values);
+  }
+
+  Uint8List _deriveKeyPbkdf2(String password, Uint8List salt) {
+    final derivator = PBKDF2KeyDerivator(HMac(SHA256Digest(), 64))
+      ..init(Pbkdf2Parameters(salt, pbkdf2Iterations, pbkdf2KeyLength));
+    return derivator.process(Uint8List.fromList(utf8.encode(password)));
   }
 
   String _computeSha256(String pin, String salt) {
@@ -51,6 +68,7 @@ class SecurityService {
     }
   }
 
+  // App Lock Passcode methods
   Future<bool> hasPasscode() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.containsKey(_passcodeHashKey) && prefs.containsKey(_passcodeSaltKey);
@@ -86,18 +104,16 @@ class SecurityService {
     final savedHash = prefs.getString(_passcodeHashKey);
     final savedSalt = prefs.getString(_passcodeSaltKey);
     if (savedHash == null || savedSalt == null) {
-      // Fail closed: if no passcode exists, cannot verify
+      // Fail closed
       return false;
     }
 
     final computed = _computeSha256(pin, savedSalt);
     if (computed == savedHash) {
-      // Reset failed attempts on success
       await prefs.setInt(_failedAttemptsKey, 0);
       await prefs.remove(_lockoutTimestampKey);
       return true;
     } else {
-      // Increment failed attempts
       final attempts = (prefs.getInt(_failedAttemptsKey) ?? 0) + 1;
       await prefs.setInt(_failedAttemptsKey, attempts);
       if (attempts >= maxAttempts) {
@@ -116,36 +132,71 @@ class SecurityService {
     await prefs.remove(_lockoutTimestampKey);
   }
 
+  // Note Lock separate password methods
+  Future<bool> hasNotePassword() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_notePasswordHashKey) && prefs.containsKey(_notePasswordSaltKey);
+  }
+
+  Future<void> setNotePassword(String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    final salt = _generateSalt();
+    final hash = _computeSha256(password, salt);
+    await prefs.setString(_notePasswordSaltKey, salt);
+    await prefs.setString(_notePasswordHashKey, hash);
+  }
+
+  Future<bool> verifyNotePassword(String password) async {
+    final prefs = await SharedPreferences.getInstance();
+    final savedHash = prefs.getString(_notePasswordHashKey);
+    final savedSalt = prefs.getString(_notePasswordSaltKey);
+    if (savedHash == null || savedSalt == null) return false;
+    return _computeSha256(password, savedSalt) == savedHash;
+  }
+
   Future<void> setRecentsScreenshotPolicy(bool secure) async {
     try {
       await _recentsChannel.invokeMethod('applyRecentsScreenshotPolicy', {'hideInRecents': secure});
     } catch (_) {}
   }
 
-  /// AES-256 CBC local encryption for locked note content
+  /// AES-256 CBC local encryption for locked note content with PBKDF2 key derivation.
+  /// Format: v2:saltBase64:ivBase64:cipherBase64
   String encryptNoteContent(String plainText, String keyString) {
     if (plainText.isEmpty) return "";
-    final keyBytes = sha256.convert(utf8.encode(keyString)).bytes;
-    final key = enc.Key(Uint8List.fromList(keyBytes));
+    final salt = Uint8List.fromList(List<int>.generate(16, (i) => Random.secure().nextInt(256)));
+    final keyBytes = _deriveKeyPbkdf2(keyString, salt);
+    final key = enc.Key(keyBytes);
     final iv = enc.IV.fromLength(16);
     final encrypter = enc.Encrypter(enc.AES(key));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
-    return "${base64Url.encode(iv.bytes)}:${encrypted.base64}";
+    return "v2:${base64Url.encode(salt)}:${base64Url.encode(iv.bytes)}:${encrypted.base64}";
   }
 
-  String decryptNoteContent(String cipherTextWithIv, String keyString) {
-    if (cipherTextWithIv.isEmpty) return "";
-    final parts = cipherTextWithIv.split(':');
-    if (parts.length != 2) return cipherTextWithIv; // Fallback to raw if not encrypted
+  /// Fail-closed decryption: on incorrect key or format mismatch, returns empty string.
+  /// NEVER returns plaintext or raw input on failure.
+  String decryptNoteContent(String cipherTextWithSaltIv, String keyString) {
+    if (cipherTextWithSaltIv.isEmpty) return "";
+    String payload = cipherTextWithSaltIv;
+    if (payload.startsWith("v2:")) {
+      payload = payload.substring(3);
+    }
+    final parts = payload.split(':');
+    if (parts.length != 3) {
+      // Fail-closed: invalid format
+      return "";
+    }
     try {
-      final ivBytes = base64Url.decode(parts[0]);
-      final keyBytes = sha256.convert(utf8.encode(keyString)).bytes;
-      final key = enc.Key(Uint8List.fromList(keyBytes));
+      final salt = base64Url.decode(parts[0]);
+      final ivBytes = base64Url.decode(parts[1]);
+      final keyBytes = _deriveKeyPbkdf2(keyString, salt);
+      final key = enc.Key(keyBytes);
       final iv = enc.IV(Uint8List.fromList(ivBytes));
       final encrypter = enc.Encrypter(enc.AES(key));
-      return encrypter.decrypt(enc.Encrypted.fromBase64(parts[1]), iv: iv);
+      return encrypter.decrypt(enc.Encrypted.fromBase64(parts[2]), iv: iv);
     } catch (_) {
-      return cipherTextWithIv;
+      // Fail-closed: never return ciphertext or raw input
+      return "";
     }
   }
 }

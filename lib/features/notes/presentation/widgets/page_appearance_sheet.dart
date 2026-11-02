@@ -1,4 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -43,9 +46,43 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
   @override
   void initState() {
     super.initState();
-    _fontSize = (widget.note.textScale > 0)
-        ? widget.note.textScale
-        : AppThemeController.instance.defaultFontSize;
+    final double mult = widget.note.textScale > 0
+        ? (widget.note.textScale > 2.0 ? widget.note.textScale / 16.0 : widget.note.textScale)
+        : (AppThemeController.instance.defaultFontSize / 16.0);
+    _fontSize = (mult * 16.0).clamp(12.0, 28.0);
+    widget.note.textScale = _fontSize / 16.0;
+  }
+
+  Future<void> _pickCustomFont() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['ttf', 'otf'],
+      );
+      if (result != null && result.files.single.path != null) {
+        final path = result.files.single.path!;
+        final fontBytes = await File(path).readAsBytes();
+        final fontLoader = FontLoader('CustomNoteFont_${DateTime.now().millisecondsSinceEpoch}');
+        fontLoader.addFont(Future.value(ByteData.view(fontBytes.buffer)));
+        await fontLoader.load();
+        if (mounted) {
+          setState(() {
+            _selectedFont = 'custom';
+            widget.note.customFontPath = path;
+          });
+          widget.onAppearanceChanged();
+        }
+      } else {
+        if (mounted) setState(() => _selectedFont = 'pretenda');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Could not load font file: $e. Reverting to pretenda.")),
+        );
+        setState(() => _selectedFont = 'pretenda');
+      }
+    }
   }
 
   @override
@@ -181,7 +218,13 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     child: RadioGroup<String>(
                       groupValue: _selectedFont,
-                      onChanged: (val) => setState(() => _selectedFont = val!),
+                      onChanged: (val) {
+                        if (val == 'custom') {
+                          _pickCustomFont();
+                        } else {
+                          setState(() => _selectedFont = val!);
+                        }
+                      },
                       child: Column(
                         children: [
                           RadioListTile<String>(
@@ -189,25 +232,25 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                             value: 'pretenda',
                             activeColor: themeCtrl.accentColor,
                           ),
-                        const Divider(height: 1),
-                        RadioListTile<String>(
-                          title: const Text("System Default"),
-                          value: 'system',
-                          activeColor: themeCtrl.accentColor,
-                        ),
-                        const Divider(height: 1),
-                        RadioListTile<String>(
-                          title: const Text("Custom Imported Font (.ttf/.otf)"),
-                          value: 'custom',
-                          activeColor: themeCtrl.accentColor,
-                        ),
+                          const Divider(height: 1),
+                          RadioListTile<String>(
+                            title: const Text("System Default"),
+                            value: 'system',
+                            activeColor: themeCtrl.accentColor,
+                          ),
+                          const Divider(height: 1),
+                          RadioListTile<String>(
+                            title: const Text("Custom Imported Font (.ttf/.otf)"),
+                            value: 'custom',
+                            activeColor: themeCtrl.accentColor,
+                          ),
                         ],
                       ),
                     ),
                   ),
 
                   const SizedBox(height: 20),
-                  // TEXT SIZE & SCALING
+                  // TEXT SIZE & SCALING (NoteTextScaler Multiplier)
                   _buildSectionLabel("TEXT SIZE & SCALING (NoteTextScaler)"),
                   Card(
                     elevation: 0,
@@ -231,7 +274,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                                   onChanged: (val) {
                                     setState(() {
                                       _fontSize = val;
-                                      widget.note.textScale = val;
+                                      widget.note.textScale = val / 16.0;
                                     });
                                     widget.onAppearanceChanged();
                                   },
@@ -243,8 +286,8 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                           TextButton(
                             onPressed: () {
                               setState(() {
-                                _fontSize = themeCtrl.defaultFontSize;
-                                widget.note.textScale = themeCtrl.defaultFontSize;
+                                _fontSize = themeCtrl.defaultFontSize.clamp(12.0, 28.0);
+                                widget.note.textScale = themeCtrl.defaultFontSize / 16.0;
                               });
                               widget.onAppearanceChanged();
                             },

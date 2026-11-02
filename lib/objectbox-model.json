@@ -1,0 +1,297 @@
+{
+  "_note1": "KEEP THIS FILE! Check it into a version control system (VCS) like git.",
+  "_note2": "ObjectBox manages crucial IDs for your object model. See docs for details.",
+  "_note3": "If you have VCS merge conflicts, you must resolve them according to ObjectBox docs.",
+  "entities": [
+    {
+      "id": "1:5072515766650283135",
+      "lastPropertyId": "10:1171239967854343522",
+      "name": "AttachmentEntity",
+      "properties": [
+        {
+          "id": "1:3964152142881491253",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:19862113505981663",
+          "name": "uuid",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "1:5411831922362701106"
+        },
+        {
+          "id": "3:4248559647668371976",
+          "name": "type",
+          "type": 9
+        },
+        {
+          "id": "4:5665724348657749127",
+          "name": "localPath",
+          "type": 9
+        },
+        {
+          "id": "5:7752021568870366949",
+          "name": "fileName",
+          "type": 9
+        },
+        {
+          "id": "6:8281826814328379875",
+          "name": "fileSizeBytes",
+          "type": 6
+        },
+        {
+          "id": "7:8395479429044140731",
+          "name": "durationMs",
+          "type": 6
+        },
+        {
+          "id": "8:234632161053989803",
+          "name": "transcript",
+          "type": 9
+        },
+        {
+          "id": "9:7924954324070583553",
+          "name": "isLargeView",
+          "type": 1
+        },
+        {
+          "id": "10:1171239967854343522",
+          "name": "noteId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "2:3274793101393902673",
+          "relationTarget": "NoteEntity"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "2:3960521886391103710",
+      "lastPropertyId": "8:7531081414593991829",
+      "name": "FolderEntity",
+      "properties": [
+        {
+          "id": "1:6814535909852089631",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:3933588032002253902",
+          "name": "uuid",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "3:8344908752632578551"
+        },
+        {
+          "id": "3:1482027017732593232",
+          "name": "name",
+          "type": 9
+        },
+        {
+          "id": "4:352807321631392986",
+          "name": "emoji",
+          "type": 9
+        },
+        {
+          "id": "5:1075869915127811166",
+          "name": "colorValue",
+          "type": 6
+        },
+        {
+          "id": "6:189106941022095203",
+          "name": "sortOrder",
+          "type": 6
+        },
+        {
+          "id": "7:6354013624185424959",
+          "name": "isExpanded",
+          "type": 1
+        },
+        {
+          "id": "8:7531081414593991829",
+          "name": "parentFolderId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "4:2164051001234011114",
+          "relationTarget": "FolderEntity"
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "3:7657009070143290270",
+      "lastPropertyId": "23:5288070960624455568",
+      "name": "NoteEntity",
+      "properties": [
+        {
+          "id": "1:7415894728843514468",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:6771295543816380245",
+          "name": "uuid",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "5:3435047116633873821"
+        },
+        {
+          "id": "3:139829208621033641",
+          "name": "title",
+          "type": 9
+        },
+        {
+          "id": "4:5898676173716438215",
+          "name": "contentJson",
+          "type": 9
+        },
+        {
+          "id": "5:8102228699882620783",
+          "name": "plainText",
+          "type": 9
+        },
+        {
+          "id": "6:2513605354267457812",
+          "name": "createdAt",
+          "type": 10
+        },
+        {
+          "id": "7:1034632391411044880",
+          "name": "updatedAt",
+          "type": 10
+        },
+        {
+          "id": "8:1348902930518110328",
+          "name": "isPinned",
+          "type": 1
+        },
+        {
+          "id": "9:383300190199995645",
+          "name": "isLocked",
+          "type": 1
+        },
+        {
+          "id": "10:227021534620574573",
+          "name": "isArchived",
+          "type": 1
+        },
+        {
+          "id": "11:6193235170008008122",
+          "name": "passwordHash",
+          "type": 9
+        },
+        {
+          "id": "12:2258212269780809710",
+          "name": "isTrashed",
+          "type": 1
+        },
+        {
+          "id": "13:5636047987064363943",
+          "name": "trashedAt",
+          "type": 10
+        },
+        {
+          "id": "14:3951111666421885882",
+          "name": "colorIndex",
+          "type": 6
+        },
+        {
+          "id": "15:1490994499142364618",
+          "name": "coverImagePath",
+          "type": 9
+        },
+        {
+          "id": "16:7661437888505879293",
+          "name": "backgroundImagePath",
+          "type": 9
+        },
+        {
+          "id": "17:6595106364110875655",
+          "name": "textScale",
+          "type": 8
+        },
+        {
+          "id": "18:3165862144522970262",
+          "name": "customFontPath",
+          "type": 9
+        },
+        {
+          "id": "19:2738443092746102761",
+          "name": "mathResultsMode",
+          "type": 9
+        },
+        {
+          "id": "20:859272588429988787",
+          "name": "folderId",
+          "type": 11,
+          "flags": 520,
+          "indexId": "6:207564999492214338",
+          "relationTarget": "FolderEntity"
+        },
+        {
+          "id": "21:5274965717758179926",
+          "name": "contentMarkdown",
+          "type": 9
+        },
+        {
+          "id": "22:7043830389405398313",
+          "name": "isTrash",
+          "type": 1
+        },
+        {
+          "id": "23:5288070960624455568",
+          "name": "colorValue",
+          "type": 6
+        }
+      ],
+      "relations": []
+    },
+    {
+      "id": "4:8698567746368956885",
+      "lastPropertyId": "3:2071479359042891064",
+      "name": "TagEntity",
+      "properties": [
+        {
+          "id": "1:8647777218271888477",
+          "name": "id",
+          "type": 6,
+          "flags": 1
+        },
+        {
+          "id": "2:2483787655740134776",
+          "name": "name",
+          "type": 9,
+          "flags": 2048,
+          "indexId": "7:2832762921181417506"
+        },
+        {
+          "id": "3:2071479359042891064",
+          "name": "colorValue",
+          "type": 6
+        }
+      ],
+      "relations": [
+        {
+          "id": "1:3902717486436423794",
+          "name": "notes",
+          "targetId": "3:7657009070143290270"
+        }
+      ]
+    }
+  ],
+  "lastEntityId": "4:8698567746368956885",
+  "lastIndexId": "7:2832762921181417506",
+  "lastRelationId": "1:3902717486436423794",
+  "lastSequenceId": "0:0",
+  "modelVersion": 5,
+  "modelVersionParserMinimum": 5,
+  "retiredEntityUids": [],
+  "retiredIndexUids": [],
+  "retiredPropertyUids": [],
+  "retiredRelationUids": [],
+  "version": 1
+}

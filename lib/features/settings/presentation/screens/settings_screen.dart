@@ -1,5 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -26,6 +30,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _hasPasscode = false;
   bool _secureRecents = false;
   String _currentLanguage = 'en-US';
+  String _appVersion = "1.0.0";
+  String _buildNumber = "1";
   bool _isLoading = true;
 
   static const Map<String, String> _languages = {
@@ -59,6 +65,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPass = await _securityService.hasPasscode();
+    try {
+      final info = await PackageInfo.fromPlatform();
+      _appVersion = info.version;
+      _buildNumber = info.buildNumber;
+    } catch (_) {}
+
     if (mounted) {
       setState(() {
         _currentLanguage = prefs.getString('app_language') ?? 'en-US';
@@ -80,15 +92,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final notes = widget.repository != null ? await widget.repository!.getAllNotes() : [];
     int totalNotes = notes.length;
     int totalWords = 0;
-    int totalBytes = 0;
+    int totalNotesBytes = 0;
 
     for (var n in notes) {
       final str = "${n.title}\n${n.contentMarkdown}";
       totalWords += str.trim().isEmpty ? 0 : str.trim().split(RegExp(r'\s+')).length;
-      totalBytes += utf8.encode(str).length;
+      totalNotesBytes += utf8.encode(str).length;
     }
 
-    final kb = (totalBytes / 1024).toStringAsFixed(1);
+    int photoScanBytes = 0;
+    int audioBytes = 0;
+    try {
+      final docDir = await getApplicationDocumentsDirectory();
+      if (docDir.existsSync()) {
+        final entities = docDir.listSync(recursive: true);
+        for (var entity in entities) {
+          if (entity is File) {
+            final p = entity.path.toLowerCase();
+            final len = entity.lengthSync();
+            if (p.endsWith('.jpg') || p.endsWith('.png') || p.endsWith('.jpeg') || p.endsWith('.pdf')) {
+              photoScanBytes += len;
+            } else if (p.endsWith('.m4a') || p.endsWith('.aac') || p.endsWith('.mp3') || p.endsWith('.wav')) {
+              audioBytes += len;
+            }
+          }
+        }
+      }
+    } catch (_) {}
+
+    final totalUsedBytes = totalNotesBytes + photoScanBytes + audioBytes;
+    final totalKb = (totalUsedBytes / 1024).toStringAsFixed(1);
+    final notesKb = (totalNotesBytes / 1024).toStringAsFixed(1);
+    final photoKb = (photoScanBytes / 1024).toStringAsFixed(1);
+    final audioKb = (audioBytes / 1024).toStringAsFixed(1);
 
     if (!mounted) return;
     showModalBottomSheet(
@@ -131,24 +167,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   leading: const Icon(Icons.note_alt_outlined),
                   title: const Text("Notes & Texts"),
                   subtitle: Text("$totalNotes notes · $totalWords words"),
-                  trailing: Text("$kb KB", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  trailing: Text("$notesKb KB", style: const TextStyle(fontWeight: FontWeight.bold)),
                 ),
-                const ListTile(
-                  leading: Icon(Icons.image_outlined),
-                  title: Text("Photos & Scans"),
-                  subtitle: Text("Embedded images"),
-                  trailing: Text("0.0 KB", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                const ListTile(
-                  leading: Icon(Icons.mic_none_outlined),
-                  title: Text("Audio Recordings"),
-                  subtitle: Text("Voice memos & waveforms"),
-                  trailing: Text("0.0 KB", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
+                if (photoScanBytes > 0)
+                  ListTile(
+                    leading: const Icon(Icons.image_outlined),
+                    title: const Text("Photos & Scans"),
+                    subtitle: const Text("Embedded images & documents"),
+                    trailing: Text("$photoKb KB", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                if (audioBytes > 0)
+                  ListTile(
+                    leading: const Icon(Icons.mic_none_outlined),
+                    title: const Text("Audio Recordings"),
+                    subtitle: const Text("Voice memos & waveforms"),
+                    trailing: Text("$audioKb KB", style: const TextStyle(fontWeight: FontWeight.bold)),
+                  ),
                 const Divider(),
                 ListTile(
                   title: const Text("Total Storage Used", style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: Text("$kb KB", style: TextStyle(fontWeight: FontWeight.bold, color: AppThemeController.instance.accentColor)),
+                  trailing: Text("$totalKb KB", style: TextStyle(fontWeight: FontWeight.bold, color: AppThemeController.instance.accentColor)),
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
@@ -170,25 +208,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (notes.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No notes to export")),
+          const SnackBar(content: Text("No notes to backup")),
         );
       }
       return;
     }
-
     final buffer = StringBuffer();
-    buffer.writeln("# Notes Backup Archive");
-    buffer.writeln("Export Date: ${DateTime.now().toIso8601String()}\n");
+    buffer.writeln("# Notes Backup (${DateTime.now().toIso8601String()})\n");
     for (var n in notes) {
-      buffer.writeln("## ${n.title.isEmpty ? 'Untitled' : n.title}");
-      buffer.writeln("Created: ${n.createdAt}");
+      buffer.writeln("## ${n.title.isNotEmpty ? n.title : 'Untitled'}\n");
       buffer.writeln(n.contentMarkdown);
       buffer.writeln("\n---\n");
     }
-
     await SharePlus.instance.share(ShareParams(
       text: buffer.toString(),
-      subject: "Notes_Backup_${DateTime.now().millisecondsSinceEpoch}.md",
+      subject: "Notes Export",
     ));
   }
 
@@ -200,33 +234,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
       builder: (ctx) {
         final isDark = Theme.of(ctx).brightness == Brightness.dark;
         return Container(
-          height: MediaQuery.of(ctx).size.height * 0.75,
+          height: MediaQuery.of(ctx).size.height * 0.7,
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
             borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white24 : Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    Icon(Icons.language_rounded, color: AppThemeController.instance.accentColor),
-                    const SizedBox(width: 8),
-                    Text("Select App Language", style: AppTypography.headingMedium),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
+              const SizedBox(height: 16),
+              Text("Select Language", style: AppTypography.headingMedium),
+              const SizedBox(height: 16),
               Expanded(
                 child: ListView.separated(
                   itemCount: _languages.length,
@@ -241,6 +270,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () async {
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('app_language', key);
+                        try {
+                          final parts = key.split('-');
+                          final locale = parts.length == 2 ? Locale(parts[0], parts[1]) : Locale(parts[0]);
+                          if (context.mounted) {
+                            await context.setLocale(locale);
+                          }
+                        } catch (_) {}
                         if (!mounted) return;
                         setState(() => _currentLanguage = key);
                         if (ctx.mounted) {
@@ -360,47 +396,56 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           borderRadius: BorderRadius.circular(16),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
+                              color: Colors.black.withValues(alpha: 0.2),
                               blurRadius: 10,
                               offset: const Offset(0, 4),
                             ),
                           ],
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.star_rounded, color: Colors.white, size: 36),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: const [
-                                  Text(
-                                    "Upgrade to Premium",
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                                  ),
-                                  SizedBox(height: 2),
-                                  Text(
-                                    "Unlock all features · Ad-free",
-                                    style: TextStyle(fontSize: 12, color: Colors.white70),
-                                  ),
-                                ],
+                        child: InkWell(
+                          onTap: () => PremiumSheet.show(context),
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.2),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(Icons.star, color: Colors.amber, size: 28),
                               ),
-                            ),
-                            FilledButton(
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: Colors.black,
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: const [
+                                    Text(
+                                      "Upgrade to Premium",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    SizedBox(height: 2),
+                                    Text(
+                                      "Unlock Google Drive Sync & Unlimited Notes",
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              onPressed: () => PremiumSheet.show(context),
-                              child: const Text("Unlock", style: TextStyle(fontWeight: FontWeight.bold)),
-                            ),
-                          ],
+                              const Icon(Icons.chevron_right, color: Colors.white70),
+                            ],
+                          ),
                         ),
                       ),
 
-                      // 2. Preferences Group
-                      _buildSectionHeader("ORGANIZING & WRITING"),
+                      // 2. Writing & Organizing Group
+                      _buildSectionHeader("WRITING & ORGANIZING"),
                       _buildCard([
                         ListTile(
                           leading: const Icon(Icons.sort_rounded),
@@ -454,8 +499,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ]),
 
-                      // 3. Sync & Cloud Group
-                      _buildSectionHeader("SYNC & BACKUP"),
+                      // 3. Sync & Storage Group
+                      _buildSectionHeader("SYNC & STORAGE"),
                       _buildCard([
                         ListTile(
                           leading: Icon(Icons.sync_rounded, color: themeCtrl.accentColor),
@@ -488,7 +533,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ]),
 
-                      // 4. Security & Privacy Group
+                      // 4. Security & Vault Group
                       _buildSectionHeader("SECURITY & VAULT"),
                       _buildCard([
                         ListTile(
@@ -520,7 +565,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                       ]),
 
-                      // 5. Appearance Group (Row leading to AppearanceScreen)
+                      // 5. Appearance Group (Dedicated row navigating to AppearanceScreen)
                       _buildSectionHeader("APPEARANCE"),
                       _buildCard([
                         ListTile(
@@ -548,7 +593,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ]),
 
                       // 6. Writing & Calculations
-                      _buildSectionHeader("CALCULATIONS"),
+                      _buildSectionHeader("WRITING & CALCULATIONS"),
                       _buildCard([
                         SwitchListTile(
                           secondary: const Icon(Icons.save_outlined),
@@ -585,7 +630,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ]),
 
                       // 7. Support & Feedback
-                      _buildSectionHeader("SUPPORT"),
+                      _buildSectionHeader("SUPPORT & FEEDBACK"),
                       _buildCard([
                         ListTile(
                           leading: const Icon(Icons.star_outline_rounded),
@@ -625,7 +670,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ]),
 
                       // 8. General & About
-                      _buildSectionHeader("GENERAL"),
+                      _buildSectionHeader("GENERAL & ABOUT"),
                       _buildCard([
                         ListTile(
                           leading: const Icon(Icons.language_rounded),
@@ -642,11 +687,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           onTap: () => WhatsNewSheet.show(context),
                         ),
                         const Divider(height: 1),
-                        const ListTile(
-                          leading: Icon(Icons.info_outline_rounded),
-                          title: Text("About & Legal"),
-                          subtitle: Text("Notes (com.dusrel.note)"),
-                          trailing: Text("1.0.0 (Build 33)", style: TextStyle(color: Colors.grey)),
+                        ListTile(
+                          leading: const Icon(Icons.info_outline_rounded),
+                          title: const Text("About & Legal"),
+                          subtitle: const Text("Notes (com.dusrel.note)"),
+                          trailing: Text("$_appVersion ($_buildNumber)", style: const TextStyle(color: Colors.grey)),
                         ),
                       ]),
 

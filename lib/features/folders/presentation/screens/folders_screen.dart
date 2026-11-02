@@ -361,32 +361,38 @@ class _FoldersScreenState extends State<FoldersScreen> {
                         ),
 
                       // TAGS
-                      if (_tagCounts.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        _buildSectionHeader("TAGS"),
-                        Card(
-                          elevation: 0,
-                          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16.0),
-                            child: Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
-                              children: _tagCounts.entries.map((entry) {
-                                return ActionChip(
-                                  label: Text("${entry.key} (${entry.value})"),
-                                  backgroundColor: isDark ? Colors.white12 : Colors.white,
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                                  onPressed: () {
-                                    Navigator.pop(context, entry.key);
-                                  },
-                                );
-                              }).toList(),
-                            ),
-                          ),
+                      const SizedBox(height: 16),
+                      _buildSectionHeader("TAGS"),
+                      Card(
+                        elevation: 0,
+                        color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: _tagCounts.isEmpty
+                              ? Text(
+                                  "No tags yet. Add #tags to notes to categorize them automatically.",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark ? Colors.white60 : Colors.black54,
+                                  ),
+                                )
+                              : Wrap(
+                                  spacing: 8,
+                                  runSpacing: 8,
+                                  children: _tagCounts.entries.map((entry) {
+                                    return ActionChip(
+                                      label: Text("${entry.key} (${entry.value})"),
+                                      backgroundColor: isDark ? Colors.white12 : Colors.white,
+                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                                      onPressed: () {
+                                        Navigator.pop(context, entry.key);
+                                      },
+                                    );
+                                  }).toList(),
+                                ),
                         ),
-                      ],
+                      ),
 
                       // TRASH & ARCHIVE
                       const SizedBox(height: 16),

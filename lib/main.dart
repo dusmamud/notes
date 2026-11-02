@@ -10,6 +10,7 @@ import 'features/notes/data/repositories/note_repository_impl.dart';
 import 'features/notes/presentation/screens/notes_feed_screen.dart';
 import 'features/onboarding/presentation/welcome_tour_screen.dart';
 import 'features/onboarding/presentation/whats_new_sheet.dart';
+import 'objectbox.g.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,8 +19,14 @@ void main() async {
   // Initialize theme controller before UI renders
   await AppThemeController.instance.load();
 
+  // Open ObjectBox Store before UI builds
+  Store? store;
+  try {
+    store = await openStore();
+  } catch (_) {}
+
   // Initializing repository
-  final repository = NoteRepositoryImpl();
+  final repository = NoteRepositoryImpl(store: store);
   await repository.initialize();
 
   runApp(

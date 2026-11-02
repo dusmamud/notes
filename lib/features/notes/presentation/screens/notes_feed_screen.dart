@@ -596,7 +596,30 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
             ),
       leadingWidth: _isSelectionMode ? 56 : 100,
       actions: [
-        if (!_isSelectionMode) ...[
+        if (_isSelectionMode)
+          TextButton(
+            onPressed: () {
+              setState(() {
+                final allIds = {..._notes.map((n) => n.id), ..._pinnedNotes.map((n) => n.id)};
+                if (_selectedIds.length == allIds.length) {
+                  _selectedIds.clear();
+                } else {
+                  _selectedIds.addAll(allIds);
+                }
+              });
+            },
+            child: Text(
+              _selectedIds.length == (_notes.length + _pinnedNotes.length) && (_notes.length + _pinnedNotes.length) > 0
+                  ? "Deselect All"
+                  : "Select All",
+              style: TextStyle(
+                color: themeCtrl.accentColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 15,
+              ),
+            ),
+          )
+        else ...[
           IconButton(
             icon: const Icon(Icons.search_rounded),
             tooltip: "Search",
