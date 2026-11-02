@@ -5,7 +5,6 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 import '../../../../core/theme/app_theme_controller.dart';
 import '../../../notes/data/models/folder_entity.dart';
-import '../../../notes/data/models/note_entity.dart';
 import '../../../notes/domain/repositories/note_repository.dart';
 import 'trash_screen.dart';
 
@@ -27,7 +26,6 @@ class _FoldersScreenState extends State<FoldersScreen> {
   int _trashCount = 0;
   Map<String, int> _tagCounts = {};
   Map<int, int> _folderNoteCounts = {};
-  final Set<int> _expandedFolderIds = {};
   bool _isEditMode = false;
   bool _isLoading = true;
 
