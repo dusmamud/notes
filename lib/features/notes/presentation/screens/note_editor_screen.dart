@@ -1,5 +1,7 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pull_down_button/pull_down_button.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -446,105 +448,63 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 tooltip: "Redo",
                 onPressed: _redo,
               ),
-              PopupMenuButton<String>(
-                icon: const Icon(Icons.more_horiz_rounded),
-                onSelected: (val) async {
-                  if (val == 'summary') {
-                    NoteSummaryModal.show(context, widget.note);
-                  } else if (val == 'find') {
-                    setState(() => _showFindAndReplace = true);
-                  } else if (val == 'appearance') {
-                    PageAppearanceSheet.show(context, widget.note, () {
+              PullDownButton(
+                itemBuilder: (context) => [
+                  PullDownMenuItem(
+                    title: 'Summarize Note',
+                    icon: CupertinoIcons.chart_bar,
+                    onTap: () => NoteSummaryModal.show(context, widget.note),
+                  ),
+                  PullDownMenuItem(
+                    title: 'Find in Note',
+                    icon: CupertinoIcons.search,
+                    onTap: () => setState(() => _showFindAndReplace = true),
+                  ),
+                  PullDownMenuItem(
+                    title: 'Page Appearance',
+                    icon: CupertinoIcons.paintbrush,
+                    onTap: () => PageAppearanceSheet.show(context, widget.note, () {
                       setState(() {});
                       _autoSave();
-                    });
-                  } else if (val == 'export') {
-                    _exportNote();
-                  } else if (val == 'pin') {
-                    widget.note.isPinned = !widget.note.isPinned;
-                    await _autoSave();
-                    setState(() {});
-                  } else if (val == 'lock') {
-                    widget.note.isLocked = !widget.note.isLocked;
-                    await _autoSave();
-                    setState(() {});
-                  } else if (val == 'delete') {
-                    await widget.repository.deleteNote(widget.note.id);
-                    if (context.mounted) Navigator.of(context).pop();
-                  }
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(
-                    value: 'summary',
-                    child: Row(
-                      children: [
-                        Icon(Icons.analytics_outlined, size: 20),
-                        SizedBox(width: 8),
-                        Text("Summarize Note"),
-                      ],
-                    ),
+                    }),
                   ),
-                  const PopupMenuItem(
-                    value: 'find',
-                    child: Row(
-                      children: [
-                        Icon(Icons.search_rounded, size: 20),
-                        SizedBox(width: 8),
-                        Text("Find in Note"),
-                      ],
-                    ),
+                  PullDownMenuItem(
+                    title: 'Export Note',
+                    icon: CupertinoIcons.share,
+                    onTap: _exportNote,
                   ),
-                  const PopupMenuItem(
-                    value: 'appearance',
-                    child: Row(
-                      children: [
-                        Icon(Icons.palette_outlined, size: 20),
-                        SizedBox(width: 8),
-                        Text("Page Appearance"),
-                      ],
-                    ),
+                  PullDownMenuItem(
+                    title: widget.note.isPinned ? 'Unpin Note' : 'Pin Note',
+                    icon: widget.note.isPinned ? CupertinoIcons.pin_slash : CupertinoIcons.pin,
+                    onTap: () async {
+                      widget.note.isPinned = !widget.note.isPinned;
+                      await _autoSave();
+                      setState(() {});
+                    },
                   ),
-                  const PopupMenuItem(
-                    value: 'export',
-                    child: Row(
-                      children: [
-                        Icon(Icons.ios_share_rounded, size: 20),
-                        SizedBox(width: 8),
-                        Text("Export Note"),
-                      ],
-                    ),
+                  PullDownMenuItem(
+                    title: widget.note.isLocked ? 'Unlock Note' : 'Lock Note',
+                    icon: widget.note.isLocked ? CupertinoIcons.lock_open : CupertinoIcons.lock,
+                    onTap: () async {
+                      widget.note.isLocked = !widget.note.isLocked;
+                      await _autoSave();
+                      setState(() {});
+                    },
                   ),
-                  PopupMenuItem(
-                    value: 'pin',
-                    child: Row(
-                      children: [
-                        Icon(widget.note.isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded, size: 20),
-                        const SizedBox(width: 8),
-                        Text(widget.note.isPinned ? "Unpin Note" : "Pin Note"),
-                      ],
-                    ),
-                  ),
-                  PopupMenuItem(
-                    value: 'lock',
-                    child: Row(
-                      children: [
-                        Icon(widget.note.isLocked ? Icons.lock_open_rounded : Icons.lock_rounded, size: 20),
-                        const SizedBox(width: 8),
-                        Text(widget.note.isLocked ? "Unlock Note" : "Lock Note"),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.tagCoral),
-                        SizedBox(width: 8),
-                        Text("Move to Trash", style: TextStyle(color: AppColors.tagCoral)),
-                      ],
-                    ),
+                  PullDownMenuItem(
+                    title: 'Move to Trash',
+                    isDestructive: true,
+                    icon: CupertinoIcons.delete,
+                    onTap: () async {
+                      await widget.repository.deleteNote(widget.note.id);
+                      if (context.mounted) Navigator.of(context).pop();
+                    },
                   ),
                 ],
+                buttonBuilder: (context, showMenu) => IconButton(
+                  icon: const Icon(Icons.more_horiz_rounded),
+                  onPressed: showMenu,
+                ),
               ),
             ],
           ),
