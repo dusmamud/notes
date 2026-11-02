@@ -43,7 +43,13 @@ dependencies:
 
   # Keyboard & Input Handling
   flutter_keyboard_visibility: ^7.0.1
-  keyboard_height_plugin: ^0.1.5
+  # NOTE: keyboard_height_plugin REMOVED here (run #29 fix). It is never
+  # imported in lib/ or test/, its latest version is 0.1.5 from 2023, and
+  # it compiles against android-31, so its AAR metadata check fails with
+  # 20 issues (dependencies need compileSdk 34+). No upgrade path exists;
+  # removal changes no feature. Re-add only if code actually uses it AND
+  # a version with compileSdk 36 exists.
+  # keyboard_height_plugin: ^0.1.5
 
   # Persistence & Database
   objectbox: ^4.1.0
