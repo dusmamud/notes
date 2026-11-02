@@ -33,11 +33,13 @@ enum ActiveToolboxPanel { none, format, lists, table }
 class NoteEditorScreen extends StatefulWidget {
   final NoteEntity note;
   final NoteRepository repository;
+  final bool enableHero;
 
   const NoteEditorScreen({
     super.key,
     required this.note,
     required this.repository,
+    this.enableHero = true,
   });
 
   @override
@@ -56,6 +58,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
   String _saveStatus = "Saved";
   final List<String> _undoHistory = [];
   final List<String> _redoHistory = [];
+  String _lastRecordedText = '';
 
   TextAlign _textAlign = TextAlign.left;
   TextDirection _textDirection = TextDirection.ltr;
@@ -65,6 +68,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     super.initState();
     _titleController = TextEditingController(text: widget.note.title);
     _contentController = TextEditingController(text: widget.note.contentMarkdown);
+    _lastRecordedText = widget.note.contentMarkdown;
     _contentController.addListener(_onContentChanged);
     _titleController.addListener(_onTitleChanged);
   }
@@ -92,8 +96,13 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _checkTypingTriggers(text);
     _checkMathTriggers(text);
     // Track typing in undo stack with debounce coalescing
-    EasyDebounce.debounce('note_editor_undo', const Duration(milliseconds: 800), () {
-      _recordUndoState();
+    EasyDebounce.debounce('note_editor_undo', const Duration(milliseconds: 300), () {
+      if (_lastRecordedText != _contentController.text) {
+        _undoHistory.add(_lastRecordedText);
+        if (_undoHistory.length > 50) _undoHistory.removeAt(0);
+        _redoHistory.clear();
+        _lastRecordedText = _contentController.text;
+      }
     });
     // Auto-save with 400ms debounce
     EasyDebounce.debounce('note_editor_save', const Duration(milliseconds: 400), () {
@@ -181,6 +190,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     _undoHistory.add(_contentController.text);
     if (_undoHistory.length > 50) _undoHistory.removeAt(0);
     _redoHistory.clear();
+    _lastRecordedText = _contentController.text;
   }
 
   void _insertFormatting(String prefix, [String suffix = '']) {
@@ -203,6 +213,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (_undoHistory.isNotEmpty) {
       _redoHistory.add(_contentController.text);
       final prev = _undoHistory.removeLast();
+      _lastRecordedText = prev;
       _contentController.text = prev;
     }
   }
@@ -211,6 +222,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (_redoHistory.isNotEmpty) {
       _undoHistory.add(_contentController.text);
       final next = _redoHistory.removeLast();
+      _lastRecordedText = next;
       _contentController.text = next;
     }
   }
@@ -621,22 +633,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         ? Color(widget.note.colorValue!)
         : (isDark ? AppColors.surfaceDark : AppColors.surfaceLight);
 
-    return CallbackShortcuts(
-      bindings: <ShortcutActivator, VoidCallback>{
-        const SingleActivator(LogicalKeyboardKey.keyB, control: true): () => _handleInlineFormat('bold'),
-        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () => _handleInlineFormat('italic'),
-        const SingleActivator(LogicalKeyboardKey.keyU, control: true): () => _handleInlineFormat('underline'),
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
-        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
-        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): _redo,
-        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
-          setState(() => _showFindAndReplace = true);
-        },
-      },
-      child: KeyboardListener(
-        focusNode: _editorFocusNode,
-        onKeyEvent: _handleHardwareKey,
-        child: PopScope(
+    final scaffoldWidget = PopScope(
         canPop: true,
         onPopInvokedWithResult: (didPop, _) async {
           if (didPop) {
@@ -657,10 +654,19 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             title: Text(_saveStatus, style: AppTypography.captionMedium),
             centerTitle: true,
             actions: [
-              IconButton(
-                icon: const Icon(Icons.undo_rounded),
-                tooltip: "Undo (Hold for Redo)",
-                onPressed: _undo,
+              Tooltip(
+                message: "Undo (Hold for Redo)",
+                triggerMode: TooltipTriggerMode.tap,
+                child: GestureDetector(
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    _redo();
+                  },
+                  child: IconButton(
+                    icon: const Icon(Icons.undo_rounded),
+                    onPressed: _undo,
+                  ),
+                ),
               ),
               IconButton(
                 icon: const Icon(Icons.redo_rounded),
@@ -873,9 +879,36 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
             ],
           ),
         ),
+      );
+
+    final heroWrapped = (widget.enableHero && widget.note.id > 0)
+        ? Hero(
+            tag: 'note_${widget.note.id}',
+            child: Material(
+              type: MaterialType.transparency,
+              child: scaffoldWidget,
+            ),
+          )
+        : scaffoldWidget;
+
+    return CallbackShortcuts(
+      bindings: <ShortcutActivator, VoidCallback>{
+        const SingleActivator(LogicalKeyboardKey.keyB, control: true): () => _handleInlineFormat('bold'),
+        const SingleActivator(LogicalKeyboardKey.keyI, control: true): () => _handleInlineFormat('italic'),
+        const SingleActivator(LogicalKeyboardKey.keyU, control: true): () => _handleInlineFormat('underline'),
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true): _undo,
+        const SingleActivator(LogicalKeyboardKey.keyY, control: true): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyZ, control: true, shift: true): _redo,
+        const SingleActivator(LogicalKeyboardKey.keyF, control: true): () {
+          setState(() => _showFindAndReplace = true);
+        },
+      },
+      child: KeyboardListener(
+        focusNode: _editorFocusNode,
+        onKeyEvent: _handleHardwareKey,
+        child: heroWrapped,
       ),
-    ),
-  );
+    );
 }
 
   Widget _buildKeyboardAccessoryToolbar(bool isDark) {

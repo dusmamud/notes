@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
 
@@ -10,10 +11,9 @@ class PremiumSheet extends StatefulWidget {
   const PremiumSheet({super.key, this.onRewardUnlocked});
 
   static Future<void> show(BuildContext context, {VoidCallback? onRewardUnlocked}) {
-    return showModalBottomSheet(
+    return showModalSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      barrierDismissible: true,
       builder: (_) => PremiumSheet(onRewardUnlocked: onRewardUnlocked),
     );
   }
@@ -98,7 +98,7 @@ class _PremiumSheetState extends State<PremiumSheet> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
+    final sheetContent = Container(
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
@@ -262,6 +262,16 @@ class _PremiumSheetState extends State<PremiumSheet> {
         ),
       ),
     );
+
+    final hasViewport = context.findAncestorWidgetOfExactType<SheetViewport>() != null;
+    final sheet = Sheet(
+      physics: const BouncingSheetPhysics(),
+      child: sheetContent,
+    );
+    if (!hasViewport) {
+      return SheetViewport(child: sheet);
+    }
+    return sheet;
   }
 
   Widget _buildFeatureItem(IconData icon, String text, bool isDark) {

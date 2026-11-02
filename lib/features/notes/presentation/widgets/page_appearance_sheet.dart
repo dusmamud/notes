@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:smooth_sheets/smooth_sheets.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
@@ -23,10 +24,9 @@ class PageAppearanceSheet extends StatefulWidget {
     NoteEntity note,
     VoidCallback onChanged,
   ) {
-    return showModalBottomSheet(
+    return showModalSheet(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
+      barrierDismissible: true,
       builder: (_) => PageAppearanceSheet(note: note, onAppearanceChanged: onChanged),
     );
   }
@@ -94,7 +94,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final themeCtrl = AppThemeController.instance;
 
-    return Container(
+    final sheetContent = Container(
       height: MediaQuery.of(context).size.height * 0.85,
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
@@ -341,6 +341,16 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
         ),
       ),
     );
+
+    final hasViewport = context.findAncestorWidgetOfExactType<SheetViewport>() != null;
+    final sheet = Sheet(
+      physics: const BouncingSheetPhysics(),
+      child: sheetContent,
+    );
+    if (!hasViewport) {
+      return SheetViewport(child: sheet);
+    }
+    return sheet;
   }
 
   Widget _buildSectionLabel(String text) {

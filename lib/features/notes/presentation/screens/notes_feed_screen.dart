@@ -455,6 +455,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                         key: ValueKey(_selectedTabletNote!.id),
                         note: _selectedTabletNote!,
                         repository: widget.repository,
+                        enableHero: false,
                       )
                     : Center(
                         child: Column(
@@ -747,7 +748,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                         onSelectToggle: (_) => _toggleSelection(note.id),
                         onTap: () => _openEditor(note, '', isTablet),
                         onLongPress: () {
-                          HapticFeedback.heavyImpact();
+                          HapticFeedback.mediumImpact();
                           _toggleSelection(note.id);
                           setState(() {
                             _isSelectionMode = true;
@@ -802,7 +803,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                         onSelectToggle: (_) => _toggleSelection(note.id),
                         onTap: () => _openEditor(note, '', isTablet),
                         onLongPress: () {
-                          HapticFeedback.heavyImpact();
+                          HapticFeedback.mediumImpact();
                           _toggleSelection(note.id);
                           setState(() {
                             _isSelectionMode = true;

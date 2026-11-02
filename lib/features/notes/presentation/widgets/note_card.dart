@@ -272,7 +272,7 @@ class NoteCard extends StatelessWidget {
                 HapticFeedback.selectionClick();
                 onPinToggle?.call(!note.isPinned);
               },
-              backgroundColor: AppColors.accentGold,
+              backgroundColor: AppColors.tagOrange,
               foregroundColor: Colors.white,
               icon: note.isPinned ? Icons.push_pin_outlined : Icons.push_pin_rounded,
               label: note.isPinned ? 'Unpin' : 'Pin',
@@ -286,7 +286,7 @@ class NoteCard extends StatelessWidget {
             if (onMoveToFolder != null)
               SlidableAction(
                 onPressed: (_) {
-                  HapticFeedback.lightImpact();
+                  HapticFeedback.selectionClick();
                   onMoveToFolder?.call();
                 },
                 backgroundColor: AppColors.accentBlue,
@@ -297,7 +297,7 @@ class NoteCard extends StatelessWidget {
               ),
             SlidableAction(
               onPressed: (_) {
-                HapticFeedback.lightImpact();
+                HapticFeedback.selectionClick();
                 onDelete?.call();
               },
               backgroundColor: AppColors.tagCoral,

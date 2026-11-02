@@ -43,9 +43,11 @@ class AttachmentSelectorSheet extends StatelessWidget {
         horizontal: AppDimensions.paddingMedium,
         vertical: AppDimensions.paddingMedium,
       ),
-      child: SafeArea(
-        top: false,
-        child: Column(
+      child: Material(
+        color: Colors.transparent,
+        child: SafeArea(
+          top: false,
+          child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -68,9 +70,9 @@ class AttachmentSelectorSheet extends StatelessWidget {
             const SizedBox(height: 16),
             _SheetTile(
               icon: Icons.document_scanner_rounded,
-              color: AppColors.accentGold,
-              title: "Scan Documents",
-              subtitle: "Detect edges and scan multipage PDF",
+              color: AppColors.accentOrange,
+              title: "Document Photo Capture",
+              subtitle: "Capture photo document into PDF (native edge warp unverified)",
               onTap: () {
                 Navigator.of(context).pop();
                 onActionSelected(AttachmentAction.scanDocument);
@@ -119,6 +121,7 @@ class AttachmentSelectorSheet extends StatelessWidget {
             const SizedBox(height: 12),
           ],
         ),
+      ),
       ),
     );
   }
