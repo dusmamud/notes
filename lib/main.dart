@@ -1,3 +1,5 @@
+import 'package:workmanager/workmanager.dart';
+import 'features/backup/data/repositories/backup_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -12,8 +14,26 @@ import 'features/onboarding/presentation/welcome_tour_screen.dart';
 import 'features/onboarding/presentation/whats_new_sheet.dart';
 import 'objectbox.g.dart';
 
+
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      final store = await openStore();
+      final repo = NoteRepositoryImpl(store: store);
+      final backupRepo = BackupRepository(repository: repo);
+      await backupRepo.createPersistentBackup();
+      store.close();
+    } catch (_) {}
+    return Future.value(true);
+  });
+}
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    Workmanager().initialize(callbackDispatcher);
+  } catch (_) {}
   await EasyLocalization.ensureInitialized();
 
   // Initialize theme controller before UI renders

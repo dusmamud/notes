@@ -1,3 +1,4 @@
+import 'package:workmanager/workmanager.dart';
 import 'dart:convert';
 import 'dart:io';
 import 'package:archive/archive.dart';
@@ -87,6 +88,37 @@ class BackupRepository {
       return true;
     } catch (_) {
       return false;
+    }
+  }
+
+  /// Generates a complete ZIP archive backup saved into the persistent application documents  directory.
+  Future<File> createPersistentBackup() async {
+    final docsDir = await getApplicationDocumentsDirectory();
+    final backupsDir = Directory('${docsDir.path}/backups');
+    if (!await backupsDir.exists()) {
+      await backupsDir.create(recursive: true);
+    }
+    return createZipBackup(destinationDir: backupsDir);
+  }
+
+  /// Schedules or cancels a daily automatic background backup using Workmanager.
+  Future<void> scheduleDailyBackup(bool enabled) async {
+    const taskName = 'com.dusrel.note.dailyBackup';
+    try {
+      if (enabled) {
+        await Workmanager().registerPeriodicTask(
+          taskName,
+          'dailyBackupTask',
+          frequency: const Duration(hours: 24),
+          constraints: Constraints(
+            networkType: NetworkType.notRequired,
+          ),
+        );
+      } else {
+        await Workmanager().cancelByUniqueName(taskName);
+      }
+    } catch (_) {
+      // Safe catch for headless environments, unit tests, and unsupported platforms
     }
   }
 }

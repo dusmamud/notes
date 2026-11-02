@@ -24,82 +24,74 @@ class PremiumSheet extends StatefulWidget {
 
 class _PremiumSheetState extends State<PremiumSheet> {
   PremiumPlan _selectedPlan = PremiumPlan.yearly;
-  bool _isProcessing = false;
 
-  void _showAdBlockerDialog() {
+  void _showAdMobDisabledNotice() {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Row(
           children: [
-            Icon(Icons.shield_outlined, color: AppColors.tagCoral),
+            Icon(Icons.videocam_off_outlined, color: Colors.grey),
             SizedBox(width: 8),
-            Text("Ad Could Not Load"),
+            Text("Ads Disabled"),
           ],
         ),
         content: Text(
-          "The ad could not be loaded. An ad blocker or private DNS appears active. "
-          "Turn it off or upgrade to Premium to unlock unlimited access.",
+          "Rewarded advertisements are currently disabled. Google AdMob App ID and Ad Unit credentials are required before ads can be loaded.",
           style: AppTypography.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text("Dismiss"),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.accentGold),
-            onPressed: () {
-              Navigator.pop(ctx);
-            },
-            child: const Text("Upgrade to Premium", style: TextStyle(color: Colors.black)),
+            child: const Text("OK"),
           ),
         ],
       ),
     );
   }
 
-  void _watchAd({bool simulateAdBlock = false}) async {
-    if (simulateAdBlock) {
-      _showAdBlockerDialog();
-      return;
-    }
-    setState(() => _isProcessing = true);
-    // Simulate rewarded ad delivery with potential ad blocker check
-    await Future.delayed(const Duration(milliseconds: 900));
-    setState(() => _isProcessing = false);
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text("✨ Reward unlocked! You can use this feature once."),
-          backgroundColor: AppColors.tagForest,
+  void _showStorePurchasesDisabledNotice() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.shopping_cart_outlined, color: Colors.grey),
+            SizedBox(width: 8),
+            Text("Store Purchases Disabled"),
+          ],
         ),
-      );
-      Navigator.pop(context);
-      widget.onRewardUnlocked?.call();
-    }
+        content: Text(
+          "In-app purchases are currently disabled. Google Play Billing integration and SKU configuration are required before purchases can be processed.",
+          style: AppTypography.bodyMedium,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
-  void _purchasePremium() async {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Google Play In-App Purchases will activate in the production store release."),
+  void _showRestoreDisabledNotice() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Restore Purchases"),
+        content: Text(
+          "Subscription restoration is currently disabled because Google Play Billing is not configured in this build.",
+          style: AppTypography.bodyMedium,
         ),
-      );
-      Navigator.pop(context);
-    }
-  }
-
-  void _restorePurchases() async {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Subscription restoration will connect to Google Play in the store release."),
-        ),
-      );
-    }
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("OK"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -173,7 +165,7 @@ class _PremiumSheetState extends State<PremiumSheet> {
               ),
               _buildFeatureItem(
                 Icons.cloud_upload_outlined,
-                "Cloud Sync with Google Drive",
+                "Cloud Sync with Remote Storage",
                 isDark,
               ),
               const SizedBox(height: 20),
@@ -182,7 +174,7 @@ class _PremiumSheetState extends State<PremiumSheet> {
               _buildPlanOption(
                 plan: PremiumPlan.yearly,
                 title: "Yearly Plan",
-                price: "\$14.99 / year",
+                price: r"$14.99 / year",
                 badge: "7-Day Free Trial",
                 isDark: isDark,
               ),
@@ -190,33 +182,25 @@ class _PremiumSheetState extends State<PremiumSheet> {
               _buildPlanOption(
                 plan: PremiumPlan.lifetime,
                 title: "Lifetime Purchase",
-                price: "\$29.99",
+                price: r"$29.99",
                 badge: "Pay once, own forever",
                 isDark: isDark,
               ),
               const SizedBox(height: 24),
 
-              // Upgrade Button
+              // Upgrade Button (Honest Disabled Gate)
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: AppColors.accentGold,
+                  backgroundColor: AppColors.accentGold.withValues(alpha: 0.8),
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                onPressed: _isProcessing ? null : _purchasePremium,
-                child: _isProcessing
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
-                      )
-                    : Text(
-                        _selectedPlan == PremiumPlan.yearly
-                            ? "Start 7-Day Free Trial"
-                            : "Unlock Lifetime Access",
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
+                onPressed: _showStorePurchasesDisabledNotice,
+                child: const Text(
+                  "Store Purchases Disabled (Pending Setup)",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                ),
               ),
 
               const SizedBox(height: 14),
@@ -237,15 +221,15 @@ class _PremiumSheetState extends State<PremiumSheet> {
               ),
               const SizedBox(height: 14),
 
-              // Watch Ad Button
+              // Watch Ad Button (Honest Disabled Gate)
               OutlinedButton.icon(
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                icon: const Icon(Icons.play_circle_outline_rounded, size: 20),
-                label: const Text("Watch a Short Ad · Use Once"),
-                onPressed: _isProcessing ? null : _watchAd,
+                icon: const Icon(Icons.videocam_off_outlined, size: 20),
+                label: const Text("Rewarded Ads Disabled (AdMob Required)"),
+                onPressed: _showAdMobDisabledNotice,
               ),
 
               const SizedBox(height: 16),
@@ -254,9 +238,9 @@ class _PremiumSheetState extends State<PremiumSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: _restorePurchases,
+                    onPressed: _showRestoreDisabledNotice,
                     child: Text(
-                      "Restore Purchases",
+                      "Restore Purchases (Disabled)",
                       style: AppTypography.captionMedium.copyWith(
                         color: isDark ? Colors.white60 : Colors.black54,
                       ),
@@ -361,4 +345,3 @@ class _PremiumSheetState extends State<PremiumSheet> {
     );
   }
 }
-
