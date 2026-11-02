@@ -83,7 +83,11 @@ dependencies:
   share_plus: ^13.3.1
   url_launcher: ^6.3.1
   path_provider: ^2.1.5
-  connectivity_plus: ^6.1.5
+  # NOTE: connectivity_plus REMOVED here (run #28 fix). It is never
+  # imported in lib/ or test/, yet connectivity_plus 6.1.5 pins nm
+  # ^0.5.0, which conflicts with file_picker 13's newer nm requirement
+  # and blocked pub solving. Re-add (at 7.x) only if code actually uses it.
+  # connectivity_plus: ^6.1.5
   permission_handler: ^12.0.3
   workmanager: ^0.10.10
   system_date_time_format: ^1.5.1
