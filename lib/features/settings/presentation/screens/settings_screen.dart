@@ -270,14 +270,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       onTap: () async {
                         final prefs = await SharedPreferences.getInstance();
                         await prefs.setString('app_language', key);
+                        if (!mounted) return;
                         try {
                           final parts = key.split('-');
                           final locale = parts.length == 2 ? Locale(parts[0], parts[1]) : Locale(parts[0]);
-                          if (context.mounted) {
-                            await context.setLocale(locale);
-                          }
+                          await context.setLocale(locale);
                         } catch (_) {}
-                        if (!mounted) return;
                         setState(() => _currentLanguage = key);
                         if (ctx.mounted) {
                           Navigator.pop(ctx);

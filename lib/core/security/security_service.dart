@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:crypto/crypto.dart';
 import 'package:encrypt/encrypt.dart' as enc;
 import 'package:flutter/services.dart';
@@ -161,7 +160,7 @@ class SecurityService {
   }
 
   /// AES-256 CBC local encryption for locked note content with PBKDF2 key derivation.
-  /// Format: v2:saltBase64:ivBase64:cipherBase64
+  /// Format: saltBase64:ivBase64:cipherBase64
   String encryptNoteContent(String plainText, String keyString) {
     if (plainText.isEmpty) return "";
     final salt = Uint8List.fromList(List<int>.generate(16, (i) => Random.secure().nextInt(256)));
@@ -170,18 +169,14 @@ class SecurityService {
     final iv = enc.IV.fromLength(16);
     final encrypter = enc.Encrypter(enc.AES(key));
     final encrypted = encrypter.encrypt(plainText, iv: iv);
-    return "v2:${base64Url.encode(salt)}:${base64Url.encode(iv.bytes)}:${encrypted.base64}";
+    return "${base64Url.encode(salt)}:${base64Url.encode(iv.bytes)}:${encrypted.base64}";
   }
 
   /// Fail-closed decryption: on incorrect key or format mismatch, returns empty string.
   /// NEVER returns plaintext or raw input on failure.
   String decryptNoteContent(String cipherTextWithSaltIv, String keyString) {
     if (cipherTextWithSaltIv.isEmpty) return "";
-    String payload = cipherTextWithSaltIv;
-    if (payload.startsWith("v2:")) {
-      payload = payload.substring(3);
-    }
-    final parts = payload.split(':');
+    final parts = cipherTextWithSaltIv.split(':');
     if (parts.length != 3) {
       // Fail-closed: invalid format
       return "";

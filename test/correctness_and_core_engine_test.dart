@@ -58,7 +58,7 @@ void main() {
 
       final encrypted = sec.encryptNoteContent(plain, key);
       expect(encrypted != plain, true);
-      expect(encrypted.startsWith('v2:'), true);
+      expect(encrypted.contains(':'), true);
 
       final decrypted = sec.decryptNoteContent(encrypted, key);
       expect(decrypted, plain);
@@ -78,8 +78,8 @@ void main() {
     test('Fail-Closed: corrupted ciphertext or invalid format returns empty string', () {
       final sec = SecurityService();
       expect(sec.decryptNoteContent("malformed_data_without_prefix", "AnyKey"), '');
-      expect(sec.decryptNoteContent("v2:invalid:payload:too:many:parts", "AnyKey"), '');
-      expect(sec.decryptNoteContent("v2:bm90YWJhc2U2NA==:bm90YWJhc2U2NA==", "AnyKey"), '');
+      expect(sec.decryptNoteContent("invalid:payload:too:many:parts:here", "AnyKey"), '');
+      expect(sec.decryptNoteContent("bm90YWJhc2U2NA==:bm90YWJhc2U2NA==", "AnyKey"), '');
     });
 
     test('Salt uniqueness: encrypting identical text twice produces different ciphertexts', () {
@@ -179,3 +179,4 @@ void main() {
     });
   });
 }
+

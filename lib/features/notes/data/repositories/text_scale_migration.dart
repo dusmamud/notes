@@ -23,3 +23,4 @@ class TextScaleMigrator {
     await prefs.setBool(migrationKey, true);
   }
 }
+

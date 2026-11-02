@@ -55,7 +55,7 @@ class BackupRepository {
     final zipBytes = ZipEncoder().encode(archive);
     final tempDir = destinationDir ?? await getTemporaryDirectory();
     final backupFile = File('${tempDir.path}/dusrel_notes_backup_${DateTime.now().millisecondsSinceEpoch}.zip');
-    await backupFile.writeAsBytes(zipBytes!);
+    await backupFile.writeAsBytes(zipBytes);
     return backupFile;
   }
 

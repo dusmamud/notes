@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../../core/services/widget_sync_service.dart';
-import 'package:note/objectbox.g.dart';
+import '../../../../objectbox.g.dart';
 import '../../domain/repositories/note_repository.dart';
 import '../models/note_entity.dart';
 import '../models/folder_entity.dart';
@@ -9,7 +9,7 @@ import '../models/tag_entity.dart';
 import 'text_scale_migration.dart';
 
 class NoteRepositoryImpl implements NoteRepository {
-  final Store? _store;
+  final Store? store;
   Box<NoteEntity>? _noteBox;
   Box<FolderEntity>? _folderBox;
   Box<TagEntity>? _tagBox;
@@ -19,17 +19,17 @@ class NoteRepositoryImpl implements NoteRepository {
   final List<TagEntity> _memoryTags = [];
   bool _initialized = false;
 
-  NoteRepositoryImpl({Store? store}) : _store = store;
+  NoteRepositoryImpl({this.store});
 
   Future<void> initialize() => _ensureInitialized();
 
   Future<void> _ensureInitialized() async {
     if (_initialized) return;
 
-    if (_store != null) {
-      _noteBox = _store.box<NoteEntity>();
-      _folderBox = _store.box<FolderEntity>();
-      _tagBox = _store.box<TagEntity>();
+    if (store != null) {
+      _noteBox = store!.box<NoteEntity>();
+      _folderBox = store!.box<FolderEntity>();
+      _tagBox = store!.box<TagEntity>();
     }
 
     try {
