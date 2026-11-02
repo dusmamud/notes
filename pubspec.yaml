@@ -24,7 +24,13 @@ dependencies:
   sprung: ^3.0.1
 
   # Rich Text, Markdown & Search
-  appflowy_editor: ^6.2.0
+  # NOTE: appflowy_editor was REMOVED here (run #26 fix). It is never
+  # imported in lib/ or test/ (editor is a plain TextField), yet it pins
+  # file_picker ^10.2.0, which blocked the file_picker 13 upgrade needed
+  # for the Android 35/36 AAR check in run #25. Its own main-branch
+  # pubspec still pins file_picker ^10.3.10, so no appflowy_editor version
+  # allows file_picker 13. Re-add it only when the editor actually uses it
+  # AND its file_picker constraint allows the file_picker version in use.
   markdown: ^7.2.2
   scroll_to_index: ^3.0.1
 
