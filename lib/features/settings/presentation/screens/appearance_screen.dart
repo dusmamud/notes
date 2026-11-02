@@ -163,7 +163,7 @@ class AppearanceScreen extends StatelessWidget {
                       title: const Text("Auto"),
                       subtitle: const Text("Follow system brightness"),
                       value: themeCtrl.themeMode == ThemeMode.system,
-                      activeColor: themeCtrl.accentColor,
+                      activeThumbColor: themeCtrl.accentColor,
                       onChanged: (val) {
                         if (val) {
                           themeCtrl.setThemeMode(ThemeMode.system);
@@ -177,7 +177,7 @@ class AppearanceScreen extends StatelessWidget {
                       title: const Text("True Black (OLED)"),
                       subtitle: const Text("Pure black background in dark mode"),
                       value: themeCtrl.isOled,
-                      activeColor: themeCtrl.accentColor,
+                      activeThumbColor: themeCtrl.accentColor,
                       onChanged: (val) => themeCtrl.setOled(val),
                     ),
                   ],
@@ -266,7 +266,7 @@ class AppearanceScreen extends StatelessWidget {
                       title: const Text("Reduce Transparency"),
                       subtitle: const Text("Draw solid bars and menus instead of blur"),
                       value: themeCtrl.reduceTransparency,
-                      activeColor: themeCtrl.accentColor,
+                      activeThumbColor: themeCtrl.accentColor,
                       onChanged: (val) => themeCtrl.setReduceTransparency(val),
                     ),
                   ],

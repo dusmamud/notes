@@ -179,32 +179,30 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                     elevation: 0,
                     color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    child: Column(
-                      children: [
-                        RadioListTile<String>(
-                          title: const Text("pretenda (Default Variable TTF)"),
-                          value: 'pretenda',
-                          groupValue: _selectedFont,
-                          activeColor: themeCtrl.accentColor,
-                          onChanged: (val) => setState(() => _selectedFont = val!),
-                        ),
+                    child: RadioGroup<String>(
+                      groupValue: _selectedFont,
+                      onChanged: (val) => setState(() => _selectedFont = val!),
+                      child: Column(
+                        children: [
+                          RadioListTile<String>(
+                            title: const Text("pretenda (Default Variable TTF)"),
+                            value: 'pretenda',
+                            activeColor: themeCtrl.accentColor,
+                          ),
                         const Divider(height: 1),
                         RadioListTile<String>(
                           title: const Text("System Default"),
                           value: 'system',
-                          groupValue: _selectedFont,
                           activeColor: themeCtrl.accentColor,
-                          onChanged: (val) => setState(() => _selectedFont = val!),
                         ),
                         const Divider(height: 1),
                         RadioListTile<String>(
                           title: const Text("Custom Imported Font (.ttf/.otf)"),
                           value: 'custom',
-                          groupValue: _selectedFont,
                           activeColor: themeCtrl.accentColor,
-                          onChanged: (val) => setState(() => _selectedFont = val!),
                         ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
 
@@ -273,7 +271,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                           title: const Text("Full Width Note"),
                           subtitle: const Text("Expand text to full canvas edge"),
                           value: _fullWidth,
-                          activeColor: themeCtrl.accentColor,
+                          activeThumbColor: themeCtrl.accentColor,
                           onChanged: (val) => setState(() => _fullWidth = val),
                         ),
                         const Divider(height: 1),
@@ -281,7 +279,7 @@ class _PageAppearanceSheetState extends State<PageAppearanceSheet> {
                           title: const Text("Small Attachment View"),
                           subtitle: const Text("Compact rows for photos and PDFs"),
                           value: _smallAttachments,
-                          activeColor: themeCtrl.accentColor,
+                          activeThumbColor: themeCtrl.accentColor,
                           onChanged: (val) => setState(() => _smallAttachments = val),
                         ),
                       ],
