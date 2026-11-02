@@ -29,12 +29,14 @@ subprojects {
 // alone is NOT enough: Kotlin moved from 1.8 to 17 for :file_picker, but
 // its Java stayed at 11 because AGP re-applies Java from the plugin's own
 // compileOptions, and Gradle fails on ANY Java/Kotlin mismatch (11 vs 17
-// fails just like 17 vs 11 did). Layer (2) runs in afterEvaluate, but the
-// pre-existing evaluationDependsOn(":app") means some subprojects are
-// already evaluated when this block runs, and calling afterEvaluate on an
-// evaluated project throws (run #21, line 33). So afterEvaluate is guarded
-// with project.state.executed (public Gradle API, issue #9395): if already
-// evaluated, apply directly; otherwise register afterEvaluate.
+// fails just like 17 vs 11 did). Run #23 proved layer (2) must NOT touch
+// :app: its compileOptions are already 17 in its own build script and are
+// finalized by the Flutter plugin, so setting them again throws
+// "sourceCompatibility has been finalized" at build.gradle.kts line 52.
+// :app is therefore excluded; only library plugins get the extension pin.
+// afterEvaluate is guarded with project.state.executed (public Gradle API,
+// issue #9395): if already evaluated, apply directly; otherwise register
+// afterEvaluate.
 subprojects {
     tasks.withType<JavaCompile>().configureEach {
         sourceCompatibility = "17"
@@ -46,11 +48,13 @@ subprojects {
         }
     }
     val setJava17FromExtension: Project.() -> Unit = {
-        val androidExt = extensions.findByName("android")
-        if (androidExt is com.android.build.gradle.BaseExtension) {
-            androidExt.compileOptions {
-                sourceCompatibility = JavaVersion.VERSION_17
-                targetCompatibility = JavaVersion.VERSION_17
+        if (project.name != "app") {
+            val androidExt = extensions.findByName("android")
+            if (androidExt is com.android.build.gradle.BaseExtension) {
+                androidExt.compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
             }
         }
     }
