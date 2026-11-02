@@ -11,6 +11,7 @@ class NoteCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onLongPress;
   final ValueChanged<bool>? onPinToggle;
+  final VoidCallback? onMoveToFolder;
   final VoidCallback? onDelete;
   final bool isSelectionMode;
   final bool isSelected;
@@ -22,6 +23,7 @@ class NoteCard extends StatelessWidget {
     required this.onTap,
     required this.onLongPress,
     this.onPinToggle,
+    this.onMoveToFolder,
     this.onDelete,
     this.isSelectionMode = false,
     this.isSelected = false,
@@ -58,18 +60,22 @@ class NoteCard extends StatelessWidget {
         child: InkWell(
           onTap: isSelectionMode ? () => onSelectToggle?.call(!isSelected) : onTap,
           onLongPress: onLongPress,
-          borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+          customBorder: const ContinuousRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(18)),
+          ),
           child: Container(
-            decoration: BoxDecoration(
+            decoration: ShapeDecoration(
               color: cardBg,
-              borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.accentGold
-                    : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
-                width: isSelected ? 2.0 : 1.0,
+              shape: ContinuousRectangleBorder(
+                borderRadius: const BorderRadius.all(Radius.circular(18)),
+                side: BorderSide(
+                  color: isSelected
+                      ? AppColors.accentGold
+                      : (isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.06)),
+                  width: isSelected ? 2.0 : 1.0,
+                ),
               ),
-              boxShadow: [
+              shadows: [
                 BoxShadow(
                   color: Colors.black.withValues(alpha: 0.03),
                   blurRadius: 8,
@@ -277,6 +283,18 @@ class NoteCard extends StatelessWidget {
         endActionPane: ActionPane(
           motion: const BehindMotion(),
           children: [
+            if (onMoveToFolder != null)
+              SlidableAction(
+                onPressed: (_) {
+                  HapticFeedback.lightImpact();
+                  onMoveToFolder?.call();
+                },
+                backgroundColor: AppColors.accentBlue,
+                foregroundColor: Colors.white,
+                icon: Icons.folder_outlined,
+                label: 'Move',
+                borderRadius: BorderRadius.circular(AppDimensions.radiusCard),
+              ),
             SlidableAction(
               onPressed: (_) {
                 HapticFeedback.lightImpact();
@@ -297,17 +315,25 @@ class NoteCard extends StatelessWidget {
 
   String _formatDate(DateTime dt) {
     final now = DateTime.now();
-    final diff = now.difference(dt);
-    if (diff.inDays == 0) {
-      return "${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-    } else if (diff.inDays == 1) {
+    final today = DateTime(now.year, now.month, now.day);
+    final aDate = DateTime(dt.year, dt.month, dt.day);
+    final difference = today.difference(aDate).inDays;
+
+    if (difference == 0) {
+      final hour = dt.hour == 0 ? 12 : (dt.hour > 12 ? dt.hour - 12 : dt.hour);
+      final minute = dt.minute.toString().padLeft(2, '0');
+      final period = dt.hour >= 12 ? 'PM' : 'AM';
+      return "$hour:$minute $period";
+    } else if (difference == 1) {
       return "Yesterday";
-    } else if (diff.inDays < 7) {
+    } else if (difference < 7 && difference > 0) {
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
       return days[dt.weekday - 1];
-    } else {
+    } else if (dt.year == now.year) {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       return "${months[dt.month - 1]} ${dt.day}";
+    } else {
+      return "${dt.month}/${dt.day}/${dt.year.toString().substring(2)}";
     }
   }
 }

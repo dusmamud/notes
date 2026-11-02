@@ -23,7 +23,6 @@ import '../../domain/repositories/note_repository.dart';
 import '../widgets/audio_recording_modal.dart';
 import '../widgets/capture_bar.dart';
 import '../widgets/note_card.dart';
-import '../widgets/note_context_menu_dialog.dart';
 import 'note_editor_screen.dart';
 
 class NotesFeedScreen extends StatefulWidget {
@@ -42,6 +41,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
   bool _isSelectionMode = false;
   final Set<int> _selectedIds = {};
   NoteEntity? _selectedTabletNote;
+  final FocusNode _searchFocusNode = FocusNode();
 
   @override
   void initState() {
@@ -51,6 +51,12 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
       WhatsNewSheet.showIfNeeded(context);
       _checkInitialIntent();
     });
+  }
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
   }
 
   Future<void> _checkInitialIntent() async {
@@ -98,11 +104,21 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
   }
 
   List<NoteEntity> get _filteredNotes {
-    if (_searchQuery.isEmpty) return _notes;
-    final q = _searchQuery.toLowerCase();
+    if (_searchQuery.trim().isEmpty) return _notes;
+    final q = _searchQuery.toLowerCase().trim();
     return _notes.where((n) {
-      return n.title.toLowerCase().contains(q) ||
-          n.contentMarkdown.toLowerCase().contains(q);
+      final titleMatch = n.title.toLowerCase().contains(q);
+      final bodyMatch = n.contentMarkdown.toLowerCase().contains(q);
+      final tags = RegExp(r'#\w+')
+          .allMatches(n.contentMarkdown)
+          .map((m) => m.group(0)!.toLowerCase());
+      final tagMatch = tags.any((tag) => tag.contains(q));
+      final isAudioQuery = q.contains('audio') || q.contains('voice') || q.contains('mic');
+      final hasAudio = n.contentMarkdown.contains('🎙️ Voice Memo');
+      final isPdfQuery = q.contains('pdf') || q.contains('scan');
+      final hasPdf = n.contentMarkdown.contains('📄') || n.contentMarkdown.contains('.pdf');
+      final attachmentMatch = (isAudioQuery && hasAudio) || (isPdfQuery && hasPdf);
+      return titleMatch || bodyMatch || tagMatch || attachmentMatch;
     }).toList();
   }
 
@@ -264,52 +280,133 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     });
   }
 
-  void _openContextMenu(NoteEntity note) {
-    HapticFeedback.heavyImpact();
-    NoteContextMenuDialog.show(context, note, (action) async {
-      switch (action) {
-        case NoteContextAction.pin:
-          await widget.repository.pinNote(note.id, !note.isPinned);
-          _loadNotes();
-          break;
-        case NoteContextAction.lock:
-          note.isLocked = !note.isLocked;
-          await widget.repository.saveNote(note);
-          _loadNotes();
-          break;
-        case NoteContextAction.duplicate:
-          final clone = NoteEntity(
-            title: "${note.title} (Copy)",
-            contentMarkdown: note.contentMarkdown,
-            contentJson: note.contentJson,
-            colorValue: note.colorValue,
-            mathResultsMode: note.mathResultsMode,
-          );
-          await widget.repository.saveNote(clone);
-          _loadNotes();
-          break;
-        case NoteContextAction.moveToFolder:
-          MoveToFolderSheet.show(context, widget.repository, (folderId) async {
-            if (folderId != null) {
-              note.folder.targetId = folderId;
-            } else {
-              note.folder.target = null;
-            }
-            await widget.repository.saveNote(note);
-            _loadNotes();
-          });
-          break;
-        case NoteContextAction.share:
-          SharePlus.instance.share(ShareParams(
-            text: note.contentMarkdown,
-            subject: note.title.isEmpty ? "Note" : note.title,
-          ));
-          break;
-        case NoteContextAction.trash:
-          _deleteNote(note);
-          break;
+  void _batchToggleLock() async {
+    final anyLocked = _notes.any((n) => _selectedIds.contains(n.id) && n.isLocked);
+    final newLockState = !anyLocked;
+    for (var id in _selectedIds) {
+      final note = await widget.repository.getNoteById(id);
+      if (note != null) {
+        note.isLocked = newLockState;
+        await widget.repository.saveNote(note);
       }
+    }
+    setState(() {
+      _selectedIds.clear();
+      _isSelectionMode = false;
     });
+    _loadNotes();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Text(newLockState ? "Notes locked" : "Notes unlocked"),
+      ),
+    );
+  }
+
+  void _batchExport() {
+    final selectedNotes = _notes.where((n) => _selectedIds.contains(n.id)).toList();
+    if (selectedNotes.isEmpty) return;
+
+    final hasLocked = selectedNotes.any((n) => n.isLocked);
+    final exportableNotes = selectedNotes.where((n) => !n.isLocked).toList();
+
+    if (exportableNotes.isEmpty && hasLocked) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: const Text(
+            "The selected notes are locked and can't be exported. Please unlock them before exporting.",
+          ),
+        ),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 20, 16, 12),
+              child: Text(
+                "Export Notes",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.code_rounded),
+              title: const Text("Markdown + Assets"),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                final text = exportableNotes
+                    .map((n) => "# ${n.title}\n\n${n.contentMarkdown}")
+                    .join("\n\n---\n\n");
+                SharePlus.instance.share(ShareParams(
+                  text: text,
+                  subject: "Exported Notes (${exportableNotes.length})",
+                ));
+                _finishBatchExport(exportableNotes.length);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.picture_as_pdf_outlined),
+              title: const Text("PDF"),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                final text = exportableNotes
+                    .map((n) => "${n.title}\n\n${n.contentMarkdown}")
+                    .join("\n\n---\n\n");
+                SharePlus.instance.share(ShareParams(
+                  text: text,
+                  subject: "Exported Notes PDF (${exportableNotes.length})",
+                ));
+                _finishBatchExport(exportableNotes.length);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.description_outlined),
+              title: const Text("Plain Text + Assets"),
+              onTap: () {
+                Navigator.of(ctx).pop();
+                final text = exportableNotes
+                    .map((n) => "${n.title}\n\n${n.contentMarkdown}")
+                    .join("\n\n---\n\n");
+                SharePlus.instance.share(ShareParams(
+                  text: text,
+                  subject: "Exported Notes (${exportableNotes.length})",
+                ));
+                _finishBatchExport(exportableNotes.length);
+              },
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _finishBatchExport(int count) {
+    setState(() {
+      _selectedIds.clear();
+      _isSelectionMode = false;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Text("Exported $count notes"),
+      ),
+    );
   }
 
   @override
@@ -332,13 +429,14 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
           );
         }
 
-        // Dual Pane Layout (Tablet & Foldable - Yatay Sol Split View)
+        // Dual Pane Layout (Tablet & Foldable: 35% List / 65% Editor)
+        final listWidth = constraints.maxWidth * 0.35;
         return Scaffold(
           appBar: _buildAppBar(context),
           body: Row(
             children: [
               SizedBox(
-                width: 360,
+                width: listWidth,
                 child: Stack(
                   children: [
                     _buildNotesList(isDark, true),
@@ -346,7 +444,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                   ],
                 ),
               ),
-              const VerticalDivider(width: 1),
+              const VerticalDivider(width: 1, thickness: 1),
               Expanded(
                 child: _selectedTabletNote != null
                     ? NoteEditorScreen(
@@ -402,9 +500,11 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
       actions: [
         if (!_isSelectionMode) ...[
           IconButton(
-            icon: const Icon(Icons.checklist_rounded),
-            tooltip: "Select Notes",
-            onPressed: () => setState(() => _isSelectionMode = true),
+            icon: const Icon(Icons.search_rounded),
+            tooltip: "Search",
+            onPressed: () {
+              _searchFocusNode.requestFocus();
+            },
           ),
           PullDownButton(
             itemBuilder: (context) => [
@@ -456,6 +556,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               vertical: AppDimensions.paddingSmall,
             ),
             child: TextField(
+              focusNode: _searchFocusNode,
               decoration: InputDecoration(
                 hintText: "Search notes, tags, attachments...",
                 prefixIcon: const Icon(Icons.search_rounded),
@@ -486,7 +587,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                   Icon(Icons.note_alt_outlined, size: 64, color: isDark ? Colors.white24 : Colors.black26),
                   const SizedBox(height: 12),
                   Text(
-                    _searchQuery.isEmpty ? "No Notes Yet" : "No Matching Notes",
+                    _searchQuery.isEmpty ? "No Notes" : "No result found",
                     style: AppTypography.headingSmall.copyWith(
                       color: isDark ? Colors.white54 : Colors.black54,
                     ),
@@ -525,15 +626,22 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                         onSelectToggle: (_) => _toggleSelection(note.id),
                         onTap: () => _openEditor(note, '', isTablet),
                         onLongPress: () {
-                          if (_isSelectionMode) {
-                            _toggleSelection(note.id);
-                          } else {
-                            _openContextMenu(note);
-                          }
+                          HapticFeedback.heavyImpact();
+                          _toggleSelection(note.id);
+                          setState(() {
+                            _isSelectionMode = true;
+                          });
                         },
                         onPinToggle: (pin) async {
                           await widget.repository.pinNote(note.id, pin);
                           _loadNotes();
+                        },
+                        onMoveToFolder: () {
+                          MoveToFolderSheet.show(context, widget.repository, (folderId) async {
+                            note.folder.targetId = folderId;
+                            await widget.repository.saveNote(note);
+                            _loadNotes();
+                          });
                         },
                         onDelete: () => _deleteNote(note),
                       );
@@ -573,15 +681,22 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                         onSelectToggle: (_) => _toggleSelection(note.id),
                         onTap: () => _openEditor(note, '', isTablet),
                         onLongPress: () {
-                          if (_isSelectionMode) {
-                            _toggleSelection(note.id);
-                          } else {
-                            _openContextMenu(note);
-                          }
+                          HapticFeedback.heavyImpact();
+                          _toggleSelection(note.id);
+                          setState(() {
+                            _isSelectionMode = true;
+                          });
                         },
                         onPinToggle: (pin) async {
                           await widget.repository.pinNote(note.id, pin);
                           _loadNotes();
+                        },
+                        onMoveToFolder: () {
+                          MoveToFolderSheet.show(context, widget.repository, (folderId) async {
+                            note.folder.targetId = folderId;
+                            await widget.repository.saveNote(note);
+                            _loadNotes();
+                          });
                         },
                         onDelete: () => _deleteNote(note),
                       );
@@ -614,6 +729,18 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 IconButton(
+                  icon: const Icon(Icons.folder_outlined),
+                  tooltip: "Move to Folder",
+                  onPressed: _selectedIds.isNotEmpty ? _batchMoveToFolder : null,
+                ),
+                IconButton(
+                  icon: Icon(_notes.any((n) => _selectedIds.contains(n.id) && n.isLocked)
+                      ? Icons.lock_open_rounded
+                      : Icons.lock_outline_rounded),
+                  tooltip: "Lock Notes",
+                  onPressed: _selectedIds.isNotEmpty ? _batchToggleLock : null,
+                ),
+                IconButton(
                   icon: Icon(_pinnedNotes.any((n) => _selectedIds.contains(n.id))
                       ? Icons.push_pin_outlined
                       : Icons.push_pin_rounded),
@@ -621,9 +748,9 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                   onPressed: _selectedIds.isNotEmpty ? _toggleBatchPin : null,
                 ),
                 IconButton(
-                  icon: const Icon(Icons.folder_outlined),
-                  tooltip: "Move to Folder",
-                  onPressed: _selectedIds.isNotEmpty ? _batchMoveToFolder : null,
+                  icon: const Icon(Icons.ios_share_rounded),
+                  tooltip: "Batch Export",
+                  onPressed: _selectedIds.isNotEmpty ? _batchExport : null,
                 ),
                 IconButton(
                   icon: const Icon(Icons.delete_outline_rounded, color: AppColors.tagCoral),

@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/theme/app_theme.dart';
+import 'core/constants/app_colors.dart';
 import 'core/security/security_service.dart';
 import 'core/security/passcode_screen.dart';
 import 'features/notes/data/repositories/note_repository_impl.dart';
 import 'features/notes/presentation/screens/notes_feed_screen.dart';
+import 'features/onboarding/presentation/welcome_tour_screen.dart';
+import 'features/onboarding/presentation/whats_new_sheet.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -45,6 +48,7 @@ class _NotesAppState extends State<NotesApp> with WidgetsBindingObserver {
   bool _isCheckingAuth = true;
   bool _requiresAuth = false;
   bool _isAuthenticated = false;
+  bool _hasSeenOnboarding = true;
   ThemeMode _themeMode = ThemeMode.system;
 
   @override
@@ -74,6 +78,7 @@ class _NotesAppState extends State<NotesApp> with WidgetsBindingObserver {
   Future<void> _initAppSecurityAndTheme() async {
     final prefs = await SharedPreferences.getInstance();
     final hasCode = await _securityService.hasPasscode();
+    final hasSeenOnboarding = prefs.getBool('has_seen_onboarding') ?? false;
 
     // Sync recents policy with native WindowManager.FLAG_SECURE
     final hideRecents = prefs.getBool('secure_recents_policy') ?? false;
@@ -91,6 +96,7 @@ class _NotesAppState extends State<NotesApp> with WidgetsBindingObserver {
       setState(() {
         _requiresAuth = hasCode;
         _isAuthenticated = !hasCode;
+        _hasSeenOnboarding = hasSeenOnboarding;
         _themeMode = mode;
         _isCheckingAuth = false;
       });
@@ -117,7 +123,7 @@ class _NotesAppState extends State<NotesApp> with WidgetsBindingObserver {
       home: _isCheckingAuth
           ? const Scaffold(
               body: Center(
-                child: CircularProgressIndicator(),
+                child: CircularProgressIndicator(color: AppColors.accentGold),
               ),
             )
           : (!_isAuthenticated && _requiresAuth)
@@ -125,7 +131,20 @@ class _NotesAppState extends State<NotesApp> with WidgetsBindingObserver {
                   mode: PasscodeMode.unlockApp,
                   onSuccess: _onAuthenticationSuccess,
                 )
-              : NotesFeedScreen(repository: widget.repository),
+              : (!_hasSeenOnboarding)
+                  ? WelcomeTourScreen(
+                      onComplete: () async {
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('has_seen_onboarding', true);
+                        await prefs.setInt('last_seen_version_code', WhatsNewSheet.currentVersionCode);
+                        if (mounted) {
+                          setState(() {
+                            _hasSeenOnboarding = true;
+                          });
+                        }
+                      },
+                    )
+                  : NotesFeedScreen(repository: widget.repository),
     );
   }
 }

@@ -36,13 +36,18 @@ class AppColors {
   static const Color textPrimaryDark = Color(0xFFFFFFFF);
   static const Color textSecondaryDark = Color(0xFF8E8E93);
 
-  // Note Card Pastel Color Matrix
+  // Note Card Pastel Color Matrix (Verified REA Ground Truth)
+  static const Color pastelYellow = Color(0xFFFFF9C4);
+  static const Color pastelMint = Color(0xFFC8E6C9);
+  static const Color pastelLavender = Color(0xFFE1BEE7);
+  static const Color pastelPeach = Color(0xFFFFE0B2);
+  static const Color pastelSky = Color(0xFFBBDEFB);
+
   static const List<Color> pastelPalette = [
-    Color(0xFFFFF275), // Yellow
-    Color(0xFFFFB5C2), // Pink
-    Color(0xFFB5EAD7), // Mint
-    Color(0xFFC7CEEA), // Lavender
-    Color(0xFFFFDAC1), // Peach
-    Color(0xFFE2F0CB), // Lime
+    pastelYellow,
+    pastelMint,
+    pastelLavender,
+    pastelPeach,
+    pastelSky,
   ];
 }
