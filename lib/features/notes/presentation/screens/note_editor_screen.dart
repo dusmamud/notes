@@ -296,7 +296,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
         );
         break;
       case TableActionType.shareTable:
-        Share.share(_contentController.text, subject: widget.note.title);
+        SharePlus.instance.share(ShareParams(
+          text: _contentController.text,
+          subject: widget.note.title,
+        ));
         break;
       case TableActionType.deleteTable:
         _insertFormatting("");
@@ -378,7 +381,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               title: const Text("Export as Markdown"),
               onTap: () {
                 Navigator.pop(ctx);
-                Share.share(_contentController.text, subject: "${widget.note.title}.md");
+                SharePlus.instance.share(ShareParams(
+                  text: _contentController.text,
+                  subject: "${widget.note.title}.md",
+                ));
               },
             ),
             ListTile(
@@ -386,7 +392,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               title: const Text("Export as PDF"),
               onTap: () {
                 Navigator.pop(ctx);
-                Share.share("${widget.note.title}\n\n${_contentController.text}", subject: "${widget.note.title}.pdf");
+                SharePlus.instance.share(ShareParams(
+                  text: "${widget.note.title}\n\n${_contentController.text}",
+                  subject: "${widget.note.title}.pdf",
+                ));
               },
             ),
             ListTile(
@@ -394,7 +403,10 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
               title: const Text("Export as Plain Text"),
               onTap: () {
                 Navigator.pop(ctx);
-                Share.share(_contentController.text, subject: "${widget.note.title}.txt");
+                SharePlus.instance.share(ShareParams(
+                  text: _contentController.text,
+                  subject: "${widget.note.title}.txt",
+                ));
               },
             ),
           ],

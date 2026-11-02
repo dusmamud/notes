@@ -12,24 +12,24 @@ dependencies:
     sdk: flutter
 
   # UI, Icons & Theming
-  cupertino_icons: ^1.0.8
+  cupertino_icons: ^2.0.0
   cupertino_lists_enhanced: ^0.1.3
   pull_down_button: ^0.10.2
   navigator_resizable: ^3.1.0
   flex_color_scheme: ^8.4.0
-  flutter_slidable: ^3.1.2
-  smooth_sheets: ^0.8.2
-  emoji_picker_flutter: ^3.1.0
+  flutter_slidable: ^4.0.3
+  smooth_sheets: ^1.3.0
+  emoji_picker_flutter: ^4.5.4
   sliver_tools: ^0.2.12
   sprung: ^3.0.1
 
   # Rich Text, Markdown & Search
-  appflowy_editor: any
+  appflowy_editor: ^6.2.0
   markdown: ^7.2.2
   scroll_to_index: ^3.0.1
 
   # State, Equality & Timing Utilities
-  equatable: ^2.1.0
+  equatable: ^3.0.0
   easy_debounce: ^2.0.3
   nanoid: ^1.0.0
   uuid: ^4.5.1
@@ -45,20 +45,20 @@ dependencies:
   shared_preferences: ^2.3.5
 
   # Media, Audio & PDF
-  record: ^6.2.1
-  just_audio: ^0.9.46
-  audio_session: ^0.1.25
-  cunning_document_scanner: ^1.4.0
-  pdf: ^3.11.1
-  pdfrx: ^1.1.8
-  printing: ^5.13.2
+  record: ^7.1.2
+  just_audio: ^0.10.6
+  audio_session: ^0.2.4
+  cunning_document_scanner: ^3.0.4
+  pdf: ^3.13.1
+  pdfrx: ^2.4.8
+  printing: ^5.15.1
   image_picker: ^1.1.2
   flutter_image_compress: ^2.4.0
-  open_filex: ^4.7.0
-  archive: ^4.0.2
+  open_filex: ^5.0.0
+  archive: ^4.6.0
 
   # Security & Biometrics
-  local_auth: ^2.3.0
+  local_auth: ^3.0.2
   encrypt: ^5.0.3
 
   # Web & Link Previews
@@ -67,11 +67,11 @@ dependencies:
   # Localization, System & Background Work
   easy_localization: ^3.0.7
   intl: ^0.20.2
-  share_plus: ^10.1.4
+  share_plus: ^12.0.2
   url_launcher: ^6.3.1
   path_provider: ^2.1.5
-  connectivity_plus: ^6.1.5
-  permission_handler: ^12.0.3
+  connectivity_plus: ^7.3.2
+  permission_handler: ^13.0.2
   workmanager: ^0.10.10
   system_date_time_format: ^1.5.1
 

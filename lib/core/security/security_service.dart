@@ -5,7 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class SecurityService {
   final LocalAuthentication _localAuth = LocalAuthentication();
-  static const MethodChannel _recentsChannel = MethodChannel('inotes/recents');
+  static const MethodChannel _recentsChannel = MethodChannel('com.dusrel.note/recents');
 
   String _hashPin(String pin) {
     return base64Encode(utf8.encode("salt_notes_$pin"));
@@ -25,10 +25,8 @@ class SecurityService {
     try {
       return await _localAuth.authenticate(
         localizedReason: reason,
-        options: const AuthenticationOptions(
-          stickyAuth: true,
-          biometricOnly: false,
-        ),
+        persistAcrossBackgrounding: true,
+        biometricOnly: false,
       );
     } catch (_) {
       return false;

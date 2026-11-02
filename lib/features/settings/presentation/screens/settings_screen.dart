@@ -195,7 +195,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
       buffer.writeln("\n---\n");
     }
 
-    await Share.share(buffer.toString(), subject: "Notes_Backup_${DateTime.now().millisecondsSinceEpoch}.md");
+    await SharePlus.instance.share(ShareParams(
+      text: buffer.toString(),
+      subject: "Notes_Backup_${DateTime.now().millisecondsSinceEpoch}.md",
+    ));
   }
 
   void _showLanguageSelector() {
