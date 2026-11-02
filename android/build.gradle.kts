@@ -20,18 +20,25 @@ subprojects {
 }
 
 subprojects {
-    afterEvaluate {
-        val ext = extensions.findByName("android")
-        if (ext != null) {
-            try {
-                val method = ext.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
-                method.invoke(ext, 34)
-            } catch (e: Exception) {
+    if (project.name != "app") {
+        val configureAndroid = {
+            val ext = extensions.findByName("android")
+            if (ext != null) {
                 try {
-                    val method = ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                    val method = ext.javaClass.getMethod("setCompileSdkVersion", Int::class.javaPrimitiveType)
                     method.invoke(ext, 34)
-                } catch (ignored: Exception) {}
+                } catch (e: Exception) {
+                    try {
+                        val method = ext.javaClass.getMethod("compileSdkVersion", Int::class.javaPrimitiveType)
+                        method.invoke(ext, 34)
+                    } catch (ignored: Exception) {}
+                }
             }
+        }
+        if (project.state.executed) {
+            configureAndroid()
+        } else {
+            afterEvaluate { configureAndroid() }
         }
     }
 }
