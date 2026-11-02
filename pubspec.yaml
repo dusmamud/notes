@@ -75,7 +75,12 @@ dependencies:
   # Localization, System & Background Work
   easy_localization: ^3.0.7
   intl: ^0.20.2
-  share_plus: ^12.0.2
+  # share_plus 13.x (run #27 fix): share_plus 12 pins win32 ^5.5.3, but
+  # file_picker 13 needs win32 ^6.0.0, so pub solving failed on win32.
+  # share_plus 13.0.0 bumps win32 to 6.0.0 (min Flutter 3.41.6, Dart 3.11,
+  # both satisfied by CI Flutter 3.44) and does NOT change the
+  # SharePlus.instance.share(ShareParams(text/subject/files)) API used here.
+  share_plus: ^13.3.1
   url_launcher: ^6.3.1
   path_provider: ^2.1.5
   connectivity_plus: ^6.1.5
