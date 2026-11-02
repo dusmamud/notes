@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Free Disk Space (Ubuntu Runner)
         run: |
@@ -48,7 +48,7 @@ jobs:
         run: flutter build apk --release --no-tree-shake-icons
 
       - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: notes-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
