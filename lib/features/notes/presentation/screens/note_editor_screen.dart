@@ -331,11 +331,17 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
           break;
         case AttachmentAction.chooseFile:
           try {
-            final result = await FilePicker.platform.pickFiles();
-            if (result != null && result.files.isNotEmpty && result.files.single.path != null) {
-              final src = File(result.files.single.path!);
+            // file_picker 12+ breaking change: pickFiles() now returns
+            // List<PlatformFile> (no FilePickerResult wrapper), and this
+            // call site only ever used a single file. pickFile() is the
+            // single-file API in 13.x. Upgrade reason (CI run #25):
+            // file_picker 10.2.4 compiles against android-34, but its
+            // dependencies require compileSdk 35/36 (AAR metadata check).
+            final picked = await FilePicker.pickFile();
+            if (picked != null && picked.path != null) {
+              final src = File(picked.path!);
               final dir = await getApplicationDocumentsDirectory();
-              final name = result.files.single.name;
+              final name = picked.name;
               final dest = File('${dir.path}/file_${DateTime.now().millisecondsSinceEpoch}_$name');
               await src.copy(dest.path);
               _insertFormatting("\n[📁 $name](${dest.path})\n");
