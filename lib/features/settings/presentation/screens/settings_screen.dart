@@ -4,10 +4,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/security/security_service.dart';
 import '../../../../core/security/passcode_screen.dart';
 import '../../../premium/presentation/screens/premium_sheet.dart';
 import '../../../notes/domain/repositories/note_repository.dart';
+import '../../../onboarding/presentation/whats_new_sheet.dart';
+import 'appearance_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final NoteRepository? repository;
@@ -20,13 +23,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final SecurityService _securityService = SecurityService();
-  String _mathMode = 'suggest';
-  String _themeMode = 'system';
-  String _uiStyle = 'glass';
-  String _newNotesStartWith = 'title';
-  String _currentLanguage = 'en-US';
   bool _hasPasscode = false;
   bool _secureRecents = false;
+  String _currentLanguage = 'en-US';
   bool _isLoading = true;
 
   static const Map<String, String> _languages = {
@@ -60,22 +59,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final hasPass = await _securityService.hasPasscode();
-    setState(() {
-      _mathMode = prefs.getString('math_results_mode') ?? 'suggest';
-      _themeMode = prefs.getString('app_theme_mode') ?? 'system';
-      _uiStyle = prefs.getString('ui_style') ?? 'glass';
-      _newNotesStartWith = prefs.getString('new_notes_start_with') ?? 'title';
-      _currentLanguage = prefs.getString('app_language') ?? 'en-US';
-      _secureRecents = prefs.getBool('secure_recents_policy') ?? false;
-      _hasPasscode = hasPass;
-      _isLoading = false;
-    });
-  }
-
-  Future<void> _updateSetting(String key, String val) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(key, val);
-    setState(() {});
+    if (mounted) {
+      setState(() {
+        _currentLanguage = prefs.getString('app_language') ?? 'en-US';
+        _secureRecents = prefs.getBool('secure_recents_policy') ?? false;
+        _hasPasscode = hasPass;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _toggleSecureRecents(bool val) async {
@@ -130,7 +121,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Icon(Icons.storage_rounded, color: AppColors.accentGold),
+                    Icon(Icons.storage_rounded, color: AppThemeController.instance.accentColor),
                     const SizedBox(width: 8),
                     Text("Storage Breakdown", style: AppTypography.headingMedium),
                   ],
@@ -157,12 +148,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 const Divider(),
                 ListTile(
                   title: const Text("Total Storage Used", style: TextStyle(fontWeight: FontWeight.bold)),
-                  trailing: Text("$kb KB", style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentGold)),
+                  trailing: Text("$kb KB", style: TextStyle(fontWeight: FontWeight.bold, color: AppThemeController.instance.accentColor)),
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
                   onPressed: () => Navigator.pop(ctx),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.accentGold),
+                  style: FilledButton.styleFrom(backgroundColor: AppThemeController.instance.accentColor),
                   child: const Text("Close", style: TextStyle(color: Colors.black)),
                 ),
               ],
@@ -229,7 +220,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Row(
                   children: [
-                    const Icon(Icons.language_rounded, color: AppColors.accentGold),
+                    Icon(Icons.language_rounded, color: AppThemeController.instance.accentColor),
                     const SizedBox(width: 8),
                     Text("Select App Language", style: AppTypography.headingMedium),
                   ],
@@ -246,9 +237,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final isSelected = _currentLanguage == key;
                     return ListTile(
                       title: Text(name, style: TextStyle(fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
-                      trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.accentGold) : null,
+                      trailing: isSelected ? Icon(Icons.check_rounded, color: AppThemeController.instance.accentColor) : null,
                       onTap: () async {
-                        await _updateSetting('app_language', key);
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setString('app_language', key);
                         if (!mounted) return;
                         setState(() => _currentLanguage = key);
                         if (ctx.mounted) {
@@ -266,253 +258,430 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  void _showMathExamples() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          height: MediaQuery.of(ctx).size.height * 0.7,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1C1C1E) : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.white24 : Colors.black12,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text("Math Notes Examples", style: AppTypography.headingMedium),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ListView(
+                  children: const [
+                    ListTile(title: Text("125 * 4 ="), trailing: Text("500", style: TextStyle(fontWeight: FontWeight.bold))),
+                    ListTile(title: Text("1500 - 20% ="), trailing: Text("1200", style: TextStyle(fontWeight: FontWeight.bold))),
+                    ListTile(title: Text("sqrt(144) ="), trailing: Text("12", style: TextStyle(fontWeight: FontWeight.bold))),
+                    ListTile(title: Text("price = 45\nprice * 3 ="), trailing: Text("135", style: TextStyle(fontWeight: FontWeight.bold))),
+                    ListTile(title: Text("Total ="), trailing: Text("Sums list above", style: TextStyle(color: Colors.grey))),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final themeCtrl = AppThemeController.instance;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Settings"),
-      ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator(color: AppColors.accentGold))
-          : ListView(
-              children: [
-                // Premium Banner
-                Container(
-                  margin: const EdgeInsets.all(16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF2C2518), Color(0xFF1E1E1E)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
+          : CustomScrollView(
+              slivers: [
+                SliverAppBar(
+                  pinned: true,
+                  expandedHeight: 100,
+                  leading: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.arrow_back_ios, color: themeCtrl.accentColor, size: 16),
+                        Text("Notes", style: TextStyle(color: themeCtrl.accentColor, fontSize: 16)),
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: AppColors.accentGold.withValues(alpha: 0.3)),
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star_rounded, color: AppColors.accentGold, size: 36),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              "Notes Premium",
-                              style: AppTypography.headingMedium.copyWith(color: AppColors.accentGold),
+                  leadingWidth: 90,
+                  flexibleSpace: FlexibleSpaceBar(
+                    titlePadding: const EdgeInsets.only(left: 20, bottom: 12),
+                    title: Text(
+                      "Settings",
+                      style: TextStyle(
+                        fontFamily: AppTypography.fontFamily,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 22,
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
+                    ),
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  sliver: SliverList(
+                    delegate: SliverChildListDelegate([
+                      // 1. Upgrade to Premium Card
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8B2500), Color(0xFFD4AF37)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.15),
+                              blurRadius: 10,
+                              offset: const Offset(0, 4),
                             ),
-                            const Text(
-                              "Unlock unlimited audio transcription, document scans and sync",
-                              style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ],
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.star_rounded, color: Colors.white, size: 36),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: const [
+                                  Text(
+                                    "Upgrade to Premium",
+                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
+                                  ),
+                                  SizedBox(height: 2),
+                                  Text(
+                                    "Unlock all features · Ad-free",
+                                    style: TextStyle(fontSize: 12, color: Colors.white70),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            FilledButton(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: Colors.black,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              ),
+                              onPressed: () => PremiumSheet.show(context),
+                              child: const Text("Unlock", style: TextStyle(fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),
                       ),
-                      FilledButton(
-                        style: FilledButton.styleFrom(
-                          backgroundColor: AppColors.accentGold,
-                          foregroundColor: Colors.black,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+
+                      // 2. Preferences Group
+                      _buildSectionHeader("ORGANIZING & WRITING"),
+                      _buildCard([
+                        ListTile(
+                          leading: const Icon(Icons.sort_rounded),
+                          title: const Text("Sort Notes By"),
+                          trailing: DropdownButton<String>(
+                            value: themeCtrl.sortNotesBy,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'edited', child: Text("Date Edited")),
+                              DropdownMenuItem(value: 'created', child: Text("Date Created")),
+                              DropdownMenuItem(value: 'title', child: Text("Title")),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) themeCtrl.setSortNotesBy(val);
+                            },
+                          ),
                         ),
-                        onPressed: () => PremiumSheet.show(context),
-                        child: const Text("Upgrade", style: TextStyle(fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                ),
-
-                _buildSectionHeader("PERSONALIZATION & THEMES"),
-                ListTile(
-                  leading: const Icon(Icons.brightness_medium_rounded),
-                  title: const Text("Theme Mode"),
-                  subtitle: Text(_themeMode.toUpperCase()),
-                  trailing: DropdownButton<String>(
-                    value: _themeMode,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'light', child: Text("Light")),
-                      DropdownMenuItem(value: 'dark', child: Text("Dark")),
-                      DropdownMenuItem(value: 'system', child: Text("System")),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        _updateSetting('app_theme_mode', val);
-                        setState(() => _themeMode = val);
-                      }
-                    },
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.auto_awesome_rounded),
-                  title: const Text("UI Style"),
-                  subtitle: Text(_uiStyle == 'glass' ? "Glass Style (Frosted Blurs)" : "Classic Style (Solid Cards)"),
-                  trailing: DropdownButton<String>(
-                    value: _uiStyle,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'glass', child: Text("Glass")),
-                      DropdownMenuItem(value: 'classic', child: Text("Classic")),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        _updateSetting('ui_style', val);
-                        setState(() => _uiStyle = val);
-                      }
-                    },
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.language_rounded),
-                  title: const Text("App Language"),
-                  subtitle: Text(_languages[_currentLanguage] ?? _currentLanguage),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _showLanguageSelector,
-                ),
-
-                const Divider(),
-                _buildSectionHeader("WRITING & SMART FEATURES"),
-                ListTile(
-                  leading: const Icon(Icons.calculate_outlined),
-                  title: const Text("Math Calculation Results"),
-                  subtitle: Text(_getMathSubtitle(_mathMode)),
-                  trailing: DropdownButton<String>(
-                    value: _mathMode,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'suggest', child: Text("Suggest")),
-                      DropdownMenuItem(value: 'insert', child: Text("Insert")),
-                      DropdownMenuItem(value: 'off', child: Text("Off")),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        _updateSetting('math_results_mode', val);
-                        setState(() => _mathMode = val);
-                      }
-                    },
-                  ),
-                ),
-                ListTile(
-                  leading: const Icon(Icons.title_rounded),
-                  title: const Text("New Notes Start With"),
-                  subtitle: Text(_newNotesStartWith.toUpperCase()),
-                  trailing: DropdownButton<String>(
-                    value: _newNotesStartWith,
-                    underline: const SizedBox(),
-                    items: const [
-                      DropdownMenuItem(value: 'title', child: Text("Title")),
-                      DropdownMenuItem(value: 'heading', child: Text("Heading")),
-                      DropdownMenuItem(value: 'subheading', child: Text("Subheading")),
-                      DropdownMenuItem(value: 'body', child: Text("Body")),
-                    ],
-                    onChanged: (val) {
-                      if (val != null) {
-                        _updateSetting('new_notes_start_with', val);
-                        setState(() => _newNotesStartWith = val);
-                      }
-                    },
-                  ),
-                ),
-
-                const Divider(),
-                _buildSectionHeader("SECURITY & PRIVACY"),
-                ListTile(
-                  leading: const Icon(Icons.lock_outline_rounded),
-                  title: const Text("App Passcode"),
-                  subtitle: Text(_hasPasscode ? "Passcode Enabled" : "Passcode Disabled"),
-                  trailing: Switch(
-                    value: _hasPasscode,
-                    activeThumbColor: AppColors.accentGold,
-                    onChanged: (enable) async {
-                      if (enable) {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => PasscodeScreen(
-                              mode: PasscodeMode.setup,
-                              onSuccess: () {
-                                Navigator.of(context).pop();
-                                _loadSettings();
-                              },
-                              onCancel: () => Navigator.of(context).pop(),
-                            ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.title_rounded),
+                          title: const Text("Notes Start With"),
+                          trailing: DropdownButton<String>(
+                            value: themeCtrl.notesStartWith,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'title', child: Text("Title (H1)")),
+                              DropdownMenuItem(value: 'heading', child: Text("Heading (H2)")),
+                              DropdownMenuItem(value: 'body', child: Text("Body")),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) themeCtrl.setNotesStartWith(val);
+                            },
                           ),
-                        );
-                      } else {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (_) => PasscodeScreen(
-                              mode: PasscodeMode.unlockApp,
-                              customTitle: "Enter Passcode to Disable App Lock",
-                              onSuccess: () async {
-                                await _securityService.removePasscode();
-                                if (context.mounted) {
-                                  Navigator.of(context).pop();
-                                  _loadSettings();
-                                }
-                              },
-                              onCancel: () => Navigator.of(context).pop(),
-                            ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.checklist_rounded),
+                          title: const Text("Sort Checked Items"),
+                          subtitle: const Text("Automatically move checklist items to bottom"),
+                          trailing: DropdownButton<String>(
+                            value: themeCtrl.sortCheckedItems,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'manually', child: Text("Manually")),
+                              DropdownMenuItem(value: 'automatically', child: Text("Automatically")),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) themeCtrl.setSortCheckedItems(val);
+                            },
                           ),
-                        );
-                      }
-                    },
+                        ),
+                      ]),
+
+                      // 3. Sync & Cloud Group
+                      _buildSectionHeader("SYNC & BACKUP"),
+                      _buildCard([
+                        ListTile(
+                          leading: Icon(Icons.sync_rounded, color: themeCtrl.accentColor),
+                          title: Row(
+                            children: [
+                              const Text("Sync"),
+                              const SizedBox(width: 6),
+                              Icon(Icons.star, color: themeCtrl.accentColor, size: 16),
+                            ],
+                          ),
+                          subtitle: const Text("Sync your notes across all devices signed in to Google"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () => PremiumSheet.show(context),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.cloud_upload_outlined),
+                          title: const Text("Backup"),
+                          subtitle: const Text("Daily local backup schedule"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: _exportAllNotes,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.pie_chart_outline_rounded),
+                          title: const Text("Storage"),
+                          subtitle: const Text("Manage and back up your notes"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: _showStorageManager,
+                        ),
+                      ]),
+
+                      // 4. Security & Privacy Group
+                      _buildSectionHeader("SECURITY & VAULT"),
+                      _buildCard([
+                        ListTile(
+                          leading: const Icon(Icons.lock_outline_rounded),
+                          title: const Text("App Lock"),
+                          subtitle: Text(_hasPasscode ? "Passcode Enabled" : "Off"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => PasscodeScreen(
+                                  mode: _hasPasscode ? PasscodeMode.changePasscode : PasscodeMode.setupPasscode,
+                                  onSuccess: _loadSettings,
+                                ),
+                              ),
+                            );
+                            _loadSettings();
+                          },
+                        ),
+                        const Divider(height: 1),
+                        SwitchListTile(
+                          secondary: const Icon(Icons.remove_red_eye_outlined),
+                          title: const Text("Hide in Recents"),
+                          subtitle: const Text("Blur notes in Android task switcher"),
+                          value: _secureRecents,
+                          activeColor: themeCtrl.accentColor,
+                          onChanged: _toggleSecureRecents,
+                        ),
+                      ]),
+
+                      // 5. Appearance Group (Row leading to AppearanceScreen)
+                      _buildSectionHeader("APPEARANCE"),
+                      _buildCard([
+                        ListTile(
+                          leading: Icon(Icons.palette_outlined, color: themeCtrl.accentColor),
+                          title: const Text("Appearance", style: TextStyle(fontWeight: FontWeight.w600)),
+                          subtitle: const Text("Customize the app's look and text size."),
+                          trailing: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                themeCtrl.uiStyle == 'glass' ? "Glass" : "Classic",
+                                style: const TextStyle(color: Colors.grey),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.chevron_right, color: Colors.grey),
+                            ],
+                          ),
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const AppearanceScreen()),
+                            );
+                          },
+                        ),
+                      ]),
+
+                      // 6. Writing & Calculations
+                      _buildSectionHeader("CALCULATIONS"),
+                      _buildCard([
+                        SwitchListTile(
+                          secondary: const Icon(Icons.save_outlined),
+                          title: const Text("Auto Save"),
+                          subtitle: const Text("Automatically save notes as you type"),
+                          value: themeCtrl.autoSave,
+                          activeColor: themeCtrl.accentColor,
+                          onChanged: (val) => themeCtrl.setAutoSave(val),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.calculate_outlined),
+                          title: const Text("Math Results"),
+                          trailing: DropdownButton<String>(
+                            value: themeCtrl.mathResultsMode,
+                            underline: const SizedBox(),
+                            items: const [
+                              DropdownMenuItem(value: 'suggest', child: Text("Suggest Result")),
+                              DropdownMenuItem(value: 'insert', child: Text("Insert Result")),
+                              DropdownMenuItem(value: 'off', child: Text("Off")),
+                            ],
+                            onChanged: (val) {
+                              if (val != null) themeCtrl.setMathResultsMode(val);
+                            },
+                          ),
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.functions_rounded),
+                          title: const Text("Math Examples"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: _showMathExamples,
+                        ),
+                      ]),
+
+                      // 7. Support & Feedback
+                      _buildSectionHeader("SUPPORT"),
+                      _buildCard([
+                        ListTile(
+                          leading: const Icon(Icons.star_outline_rounded),
+                          title: const Text("Rate Us"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () {},
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.share_outlined),
+                          title: const Text("Share App"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () {
+                            SharePlus.instance.share(ShareParams(
+                              text: "Check out Notes app on Android!",
+                            ));
+                          },
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.help_outline_rounded),
+                          title: const Text("App Support"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () {},
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.restore_rounded),
+                          title: const Text("Restore Purchases"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text("No previous purchases found")),
+                            );
+                          },
+                        ),
+                      ]),
+
+                      // 8. General & About
+                      _buildSectionHeader("GENERAL"),
+                      _buildCard([
+                        ListTile(
+                          leading: const Icon(Icons.language_rounded),
+                          title: const Text("Language"),
+                          subtitle: Text(_languages[_currentLanguage] ?? _currentLanguage),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: _showLanguageSelector,
+                        ),
+                        const Divider(height: 1),
+                        ListTile(
+                          leading: const Icon(Icons.new_releases_outlined),
+                          title: const Text("What's New"),
+                          trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+                          onTap: () => WhatsNewSheet.show(context),
+                        ),
+                        const Divider(height: 1),
+                        const ListTile(
+                          leading: Icon(Icons.info_outline_rounded),
+                          title: Text("About & Legal"),
+                          subtitle: Text("Notes (com.dusrel.note)"),
+                          trailing: Text("1.0.0 (Build 33)", style: TextStyle(color: Colors.grey)),
+                        ),
+                      ]),
+
+                      const SizedBox(height: 40),
+                    ]),
                   ),
                 ),
-                SwitchListTile(
-                  secondary: const Icon(Icons.visibility_off_outlined),
-                  title: const Text("Hide in Recent Apps"),
-                  subtitle: const Text("Protects note previews from task switcher"),
-                  value: _secureRecents,
-                  activeThumbColor: AppColors.accentGold,
-                  onChanged: _toggleSecureRecents,
-                ),
-
-                const Divider(),
-                _buildSectionHeader("STORAGE & BACKUP"),
-                ListTile(
-                  leading: const Icon(Icons.pie_chart_outline_rounded, color: AppColors.accentGold),
-                  title: const Text("Storage Breakdown"),
-                  subtitle: const Text("View space used by notes and media"),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: _showStorageManager,
-                ),
-                ListTile(
-                  leading: const Icon(Icons.file_upload_outlined, color: AppColors.tagBlue),
-                  title: const Text("Export All Notes"),
-                  subtitle: const Text("Save Markdown backup archive"),
-                  onTap: _exportAllNotes,
-                ),
-
-                const Divider(),
-                _buildSectionHeader("ABOUT"),
-                const ListTile(
-                  leading: Icon(Icons.info_outline_rounded),
-                  title: Text("Version"),
-                  trailing: Text("1.0.0 (Build 1)"),
-                ),
-                const SizedBox(height: 24),
               ],
             ),
     );
   }
 
   Widget _buildSectionHeader(String title) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.only(left: 4, bottom: 8, top: 16),
       child: Text(
         title,
-        style: AppTypography.captionSmall.copyWith(fontWeight: FontWeight.bold, letterSpacing: 1.1),
+        style: AppTypography.captionSmall.copyWith(
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.1,
+          color: isDark ? Colors.white54 : Colors.black54,
+        ),
       ),
     );
   }
 
-  String _getMathSubtitle(String mode) {
-    switch (mode) {
-      case 'insert':
-        return "Automatically inserts result after '='";
-      case 'off':
-        return "Calculations disabled";
-      default:
-        return "Shows suggested ghost result badge";
-    }
+  Widget _buildCard(List<Widget> children) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      elevation: 0,
+      margin: EdgeInsets.zero,
+      color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: Column(children: children),
+    );
   }
 }

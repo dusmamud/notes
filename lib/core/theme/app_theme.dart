@@ -6,10 +6,11 @@ import '../constants/app_typography.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData light() {
+  static ThemeData light({Color? accent}) {
+    final primary = accent ?? AppColors.brandPrimary;
     return FlexThemeData.light(
-      colors: const FlexSchemeColor(
-        primary: AppColors.brandPrimary,
+      colors: FlexSchemeColor(
+        primary: primary,
         primaryContainer: AppColors.brandAmber,
         secondary: AppColors.accentBlue,
         secondaryContainer: AppColors.accentTeal,
@@ -20,10 +21,11 @@ class AppTheme {
     );
   }
 
-  static ThemeData dark({bool oled = false}) {
+  static ThemeData dark({bool oled = false, Color? accent}) {
+    final primary = accent ?? AppColors.brandPrimary;
     return FlexThemeData.dark(
-      colors: const FlexSchemeColor(
-        primary: AppColors.brandPrimary,
+      colors: FlexSchemeColor(
+        primary: primary,
         primaryContainer: AppColors.brandAmber,
         secondary: AppColors.accentBlue,
         secondaryContainer: AppColors.accentTeal,
@@ -34,4 +36,3 @@ class AppTheme {
     );
   }
 }
-

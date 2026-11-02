@@ -10,10 +10,12 @@ import 'package:sliver_tools/sliver_tools.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/theme/app_theme_controller.dart';
 import '../../../../core/security/security_service.dart';
 import '../../../../core/security/passcode_screen.dart';
 import '../../../../core/services/widget_sync_service.dart';
 import '../../../folders/presentation/screens/folders_screen.dart';
+import '../../../folders/presentation/screens/trash_screen.dart';
 import '../../../folders/presentation/widgets/move_to_folder_sheet.dart';
 import '../../../onboarding/presentation/whats_new_sheet.dart';
 import '../../../settings/presentation/screens/settings_screen.dart';
@@ -419,7 +421,8 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
 
         if (!isTablet) {
           return Scaffold(
-            appBar: _buildAppBar(context),
+            appBar: _buildAppBar(context, false),
+            drawer: _buildDrawer(context, isDark),
             body: Stack(
               children: [
                 _buildNotesList(isDark, false),
@@ -432,7 +435,8 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
         // Dual Pane Layout (Tablet & Foldable: 35% List / 65% Editor)
         final listWidth = constraints.maxWidth * 0.35;
         return Scaffold(
-          appBar: _buildAppBar(context),
+          appBar: _buildAppBar(context, true),
+          drawer: _buildDrawer(context, isDark),
           body: Row(
             children: [
               SizedBox(
@@ -470,7 +474,86 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(BuildContext context) {
+  Widget _buildDrawer(BuildContext context, bool isDark) {
+    final themeCtrl = AppThemeController.instance;
+    return Drawer(
+      child: SafeArea(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            DrawerHeader(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF1C1C1E) : const Color(0xFFF2F2F7),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.edit_note_rounded, size: 44, color: themeCtrl.accentColor),
+                  const SizedBox(height: 8),
+                  const Text("Notes", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const Text("com.dusrel.note", style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Text("📝", style: TextStyle(fontSize: 20)),
+              title: const Text("All Notes"),
+              trailing: Text("${_notes.length}", style: const TextStyle(color: Colors.grey)),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Text("⭐️", style: TextStyle(fontSize: 20)),
+              title: const Text("Pinned"),
+              trailing: Text("${_pinnedNotes.length}", style: const TextStyle(color: Colors.grey)),
+              onTap: () => Navigator.pop(context),
+            ),
+            ListTile(
+              leading: const Text("📁", style: TextStyle(fontSize: 20)),
+              title: const Text("Unlimited Folders"),
+              trailing: Icon(Icons.star, color: themeCtrl.accentColor, size: 16),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FoldersScreen(repository: widget.repository),
+                  ),
+                );
+              },
+            ),
+            ListTile(
+              leading: const Text("🗑️", style: TextStyle(fontSize: 20)),
+              title: const Text("Recently Deleted"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => TrashScreen(repository: widget.repository),
+                  ),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text("Settings"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => SettingsScreen(repository: widget.repository),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, bool isTablet) {
+    final themeCtrl = AppThemeController.instance;
     return AppBar(
       title: Text(
         _isSelectionMode ? "${_selectedIds.length} Selected" : "Notes",
@@ -484,19 +567,34 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
                 _selectedIds.clear();
               }),
             )
-          : IconButton(
-              icon: const Icon(Icons.folder_outlined),
-              tooltip: "Folders",
+          : TextButton(
               onPressed: () async {
-                if (!mounted) return;
-    await Navigator.of(context).push(
+                final res = await Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) => FoldersScreen(repository: widget.repository),
                   ),
                 );
+                if (res == 'new_note') {
+                  _openEditor(null, '', isTablet);
+                }
                 _loadNotes();
               },
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.arrow_back_ios, color: themeCtrl.accentColor, size: 16),
+                  Text(
+                    "Folders",
+                    style: TextStyle(
+                      color: themeCtrl.accentColor,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
             ),
+      leadingWidth: _isSelectionMode ? 56 : 100,
       actions: [
         if (!_isSelectionMode) ...[
           IconButton(
@@ -537,7 +635,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
               ),
             ],
             buttonBuilder: (context, showMenu) => IconButton(
-              icon: const Icon(Icons.more_horiz_rounded),
+              icon: Icon(Icons.more_horiz_rounded, color: themeCtrl.accentColor),
               onPressed: showMenu,
             ),
           ),

@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:note/core/theme/app_theme_controller.dart';
 import 'package:note/core/security/security_service.dart';
 import 'package:note/core/services/markdown_table_helper.dart';
 import 'package:note/core/services/math_notes_engine.dart';
@@ -129,5 +130,24 @@ void main() {
 
     final decrypted = sec.decryptNoteContent(encrypted, "mySecretKey123");
     expect(decrypted, plain);
+  });
+
+  test('AppThemeController reactive settings test', () async {
+    SharedPreferences.setMockInitialValues({});
+    final ctrl = AppThemeController.instance;
+    await ctrl.load();
+
+    expect(ctrl.uiStyle, 'classic');
+    expect(ctrl.defaultFontSize, 16.0);
+
+    await ctrl.setUiStyle('glass');
+    expect(ctrl.uiStyle, 'glass');
+    expect(ctrl.isGlass, true);
+
+    await ctrl.setOled(true);
+    expect(ctrl.isOled, true);
+
+    await ctrl.setDefaultFontSize(20.0);
+    expect(ctrl.defaultFontSize, 20.0);
   });
 }
