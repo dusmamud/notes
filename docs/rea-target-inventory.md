@@ -135,3 +135,4 @@
 | **`inotes/ad_region`** | GDPR / CCPA geo policy | `06_DECOMPILED_NATIVE_CHANNELS_AND_WIDGETS.md` | **MISSING** | Monetization deferred |
 | **`inotes/device_info`** | Device specs & biometric hardware | `06_DECOMPILED_NATIVE_CHANNELS_AND_WIDGETS.md` | **PRESENT** | `device_info_plus` & `local_auth` |
 | **`inotes/network`** | Real-time network watcher | `06_DECOMPILED_NATIVE_CHANNELS_AND_WIDGETS.md` | **PRESENT** | `connectivity_plus` integration |
+
