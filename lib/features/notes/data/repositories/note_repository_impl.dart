@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../../core/services/widget_sync_service.dart';
 import '../../domain/repositories/note_repository.dart';
 import '../models/note_entity.dart';
 import '../models/folder_entity.dart';
@@ -62,6 +63,16 @@ class NoteRepositoryImpl implements NoteRepository {
         'updatedAt': n.updatedAt.toIso8601String(),
       }).toList();
       await prefs.setString('saved_notes_data', jsonEncode(data));
+
+      final activeNotes = _notes.where((n) => !n.isTrash && !n.isArchived).toList();
+      if (activeNotes.isNotEmpty) {
+        final top = activeNotes.first;
+        await prefs.setInt('widget_default_note_id', top.id);
+        await prefs.setString('widget_default_title', top.title.isNotEmpty ? top.title : 'Notes');
+        await prefs.setString('widget_default_body', top.contentMarkdown);
+        await prefs.setString('widget_default_date', '${top.updatedAt.day}/${top.updatedAt.month}/${top.updatedAt.year}');
+      }
+      await WidgetSyncService.updateWidgets();
     } catch (_) {}
   }
 

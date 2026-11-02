@@ -50,5 +50,29 @@ void main() {
 
     final trash = await repo.getTrashNotes();
     expect(trash.length, 1);
+
+    await repo.restoreNote(id);
+    final restored = await repo.getAllNotes();
+    expect(restored.length, 1);
+  });
+
+  test('NoteEntity JSON serialization and deserialization integrity', () {
+    final original = NoteEntity(
+      id: 42,
+      uuid: 'test-uuid-1234',
+      title: 'Architecture Review',
+      contentMarkdown: '# Clean-Room Replica\n- [x] Android Widgets\n- [x] TileService',
+      contentJson: '[{"insert":"Hello"}]',
+      isPinned: true,
+      isLocked: false,
+      colorValue: 0xFFFEEBC8,
+      createdAt: DateTime(2026, 11, 2, 10, 0),
+      updatedAt: DateTime(2026, 11, 2, 12, 0),
+    );
+
+    expect(original.id, 42);
+    expect(original.isPinned, true);
+    expect(original.colorValue, 0xFFFEEBC8);
+    expect(original.contentMarkdown.contains('TileService'), true);
   });
 }

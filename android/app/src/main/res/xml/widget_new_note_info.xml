@@ -5,7 +5,7 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_new_note"
-    android:configure="com.inotesapp.inotes.widget.WidgetConfigureActivity"
+    android:configure="com.dusrel.note.widget.WidgetConfigureActivity"
     android:resizeMode="none"
     android:widgetCategory="home_screen"
     android:widgetFeatures="configuration_optional|reconfigurable"

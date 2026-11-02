@@ -1,8 +1,12 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:pull_down_button/pull_down_button.dart';
+import 'package:sliver_tools/sliver_tools.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_typography.dart';
+import '../../../../core/services/widget_sync_service.dart';
 import '../../../folders/presentation/screens/folders_screen.dart';
 import '../../../folders/presentation/widgets/move_to_folder_sheet.dart';
 import '../../../onboarding/presentation/whats_new_sheet.dart';
@@ -31,6 +35,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
   String _searchQuery = '';
   bool _isSelectionMode = false;
   final Set<int> _selectedIds = {};
+  NoteEntity? _selectedTabletNote;
 
   @override
   void initState() {
@@ -38,7 +43,36 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     _loadNotes();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       WhatsNewSheet.showIfNeeded(context);
+      _checkInitialIntent();
     });
+  }
+
+  Future<void> _checkInitialIntent() async {
+    final data = await WidgetSyncService.getInitialIntent();
+    if (data == null || !mounted) return;
+
+    final noteId = data['note_id'];
+    if (noteId != null && noteId is num && noteId > 0) {
+      final note = await widget.repository.getNoteById(noteId.toInt());
+      if (note != null && mounted) {
+        _openEditor(note);
+        return;
+      }
+    }
+
+    final mode = data['capture_mode'];
+    if (mode == 'checklist') {
+      _openEditor(null, '- [ ] ');
+    } else if (mode == 'audio') {
+      if (!mounted) return;
+      AudioRecordingModal.show(context, (memo) {
+        _openEditor(null, "\n$memo\n");
+      });
+    } else if (mode == 'math_notes') {
+      _openEditor(null, '# Math Notes\n\n');
+    } else if (mode == 'new_note' || mode == 'quick_note' || mode == 'text') {
+      _openEditor();
+    }
   }
 
   Future<void> _loadNotes() async {
@@ -46,6 +80,13 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     final notes = await widget.repository.getAllNotes();
     setState(() {
       _notes = notes;
+      if (_selectedTabletNote != null) {
+        // Refresh reference
+        final match = notes.where((n) => n.id == _selectedTabletNote!.id);
+        _selectedTabletNote = match.isNotEmpty ? match.first : (notes.isNotEmpty ? notes.first : null);
+      } else if (notes.isNotEmpty) {
+        _selectedTabletNote = notes.first;
+      }
       _isLoading = false;
     });
   }
@@ -65,7 +106,7 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
   List<NoteEntity> get _unpinnedNotes =>
       _filteredNotes.where((n) => !n.isPinned).toList();
 
-  void _openEditor([NoteEntity? note, String initialContent = '']) async {
+  void _openEditor([NoteEntity? note, String initialContent = '', bool isTablet = false]) async {
     final noteToEdit = note ??
         NoteEntity(
           title: '',
@@ -73,6 +114,15 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
+
+    if (isTablet) {
+      if (noteToEdit.id == 0) {
+        await widget.repository.saveNote(noteToEdit);
+      }
+      setState(() => _selectedTabletNote = noteToEdit);
+      _loadNotes();
+      return;
+    }
 
     await Navigator.of(context).push(
       MaterialPageRoute(
@@ -96,8 +146,30 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
     });
   }
 
+  void _deleteNote(NoteEntity note) async {
+    await widget.repository.deleteNote(note.id);
+    _loadNotes();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: const Text("Note moved to Trash"),
+        action: SnackBarAction(
+          label: "Undo",
+          textColor: AppColors.accentGold,
+          onPressed: () async {
+            await widget.repository.restoreNote(note.id);
+            _loadNotes();
+          },
+        ),
+      ),
+    );
+  }
+
   void _batchDelete() async {
-    for (var id in _selectedIds) {
+    final deleted = List<int>.from(_selectedIds);
+    for (var id in deleted) {
       await widget.repository.deleteNote(id);
     }
     setState(() {
@@ -105,6 +177,24 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
       _isSelectionMode = false;
     });
     _loadNotes();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        content: Text("${deleted.length} notes moved to Trash"),
+        action: SnackBarAction(
+          label: "Undo",
+          textColor: AppColors.accentGold,
+          onPressed: () async {
+            for (var id in deleted) {
+              await widget.repository.restoreNote(id);
+            }
+            _loadNotes();
+          },
+        ),
+      ),
+    );
   }
 
   void _batchPin(bool pin) async {
@@ -175,11 +265,9 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
           });
           break;
         case NoteContextAction.share:
-          // Share preview
           break;
         case NoteContextAction.trash:
-          await widget.repository.deleteNote(note.id);
-          _loadNotes();
+          _deleteNote(note);
           break;
       }
     });
@@ -189,291 +277,337 @@ class _NotesFeedScreenState extends State<NotesFeedScreen> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          _isSelectionMode ? "${_selectedIds.length} Selected" : "Notes",
-          style: AppTypography.headingLarge,
-        ),
-        leading: _isSelectionMode
-            ? IconButton(
-                icon: const Icon(Icons.close_rounded),
-                onPressed: () => setState(() {
-                  _isSelectionMode = false;
-                  _selectedIds.clear();
-                }),
-              )
-            : IconButton(
-                icon: const Icon(Icons.folder_outlined),
-                tooltip: "Folders",
-                onPressed: () async {
-                  await Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => FoldersScreen(repository: widget.repository),
-                    ),
-                  );
-                  _loadNotes();
-                },
-              ),
-        actions: [
-          if (!_isSelectionMode) ...[
-            IconButton(
-              icon: const Icon(Icons.checklist_rounded),
-              tooltip: "Select Notes",
-              onPressed: () => setState(() => _isSelectionMode = true),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isTablet = constraints.maxWidth >= 600;
+
+        if (!isTablet) {
+          return Scaffold(
+            appBar: _buildAppBar(context),
+            body: Stack(
+              children: [
+                _buildNotesList(isDark, false),
+                _buildBottomBar(isDark, false),
+              ],
             ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_horiz_rounded),
-              onSelected: (val) {
-                if (val == 'select') {
-                  setState(() => _isSelectionMode = true);
-                } else if (val == 'widgets') {
+          );
+        }
+
+        // Dual Pane Layout (Tablet & Foldable - Yatay Sol Split View)
+        return Scaffold(
+          appBar: _buildAppBar(context),
+          body: Row(
+            children: [
+              SizedBox(
+                width: 360,
+                child: Stack(
+                  children: [
+                    _buildNotesList(isDark, true),
+                    _buildBottomBar(isDark, true),
+                  ],
+                ),
+              ),
+              const VerticalDivider(width: 1),
+              Expanded(
+                child: _selectedTabletNote != null
+                    ? NoteEditorScreen(
+                        key: ValueKey(_selectedTabletNote!.id),
+                        note: _selectedTabletNote!,
+                        repository: widget.repository,
+                      )
+                    : Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.edit_note_rounded, size: 72, color: isDark ? Colors.white24 : Colors.black26),
+                            const SizedBox(height: 12),
+                            Text("Select a note to view or edit", style: AppTypography.headingSmall),
+                          ],
+                        ),
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context) {
+    return AppBar(
+      title: Text(
+        _isSelectionMode ? "${_selectedIds.length} Selected" : "Notes",
+        style: AppTypography.headingLarge,
+      ),
+      leading: _isSelectionMode
+          ? IconButton(
+              icon: const Icon(Icons.close_rounded),
+              onPressed: () => setState(() {
+                _isSelectionMode = false;
+                _selectedIds.clear();
+              }),
+            )
+          : IconButton(
+              icon: const Icon(Icons.folder_outlined),
+              tooltip: "Folders",
+              onPressed: () async {
+                await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) => FoldersScreen(repository: widget.repository),
+                  ),
+                );
+                _loadNotes();
+              },
+            ),
+      actions: [
+        if (!_isSelectionMode) ...[
+          IconButton(
+            icon: const Icon(Icons.checklist_rounded),
+            tooltip: "Select Notes",
+            onPressed: () => setState(() => _isSelectionMode = true),
+          ),
+          PullDownButton(
+            itemBuilder: (context) => [
+              PullDownMenuItem(
+                title: 'Select Notes',
+                icon: CupertinoIcons.checkmark_circle,
+                onTap: () => setState(() => _isSelectionMode = true),
+              ),
+              PullDownMenuItem(
+                title: 'Widget Options',
+                icon: CupertinoIcons.square_grid_2x2,
+                onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => WidgetConfiguratorScreen(repository: widget.repository),
                     ),
                   );
-                } else if (val == 'settings') {
+                },
+              ),
+              PullDownMenuItem(
+                title: 'Settings',
+                icon: CupertinoIcons.settings,
+                onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                       builder: (_) => SettingsScreen(repository: widget.repository),
                     ),
                   );
-                }
-              },
-              itemBuilder: (_) => [
-                const PopupMenuItem(
-                  value: 'select',
-                  child: Row(
-                    children: [
-                      Icon(Icons.checklist_rounded, size: 20),
-                      SizedBox(width: 8),
-                      Text("Select Notes"),
-                    ],
+                },
+              ),
+            ],
+            buttonBuilder: (context, showMenu) => IconButton(
+              icon: const Icon(Icons.more_horiz_rounded),
+              onPressed: showMenu,
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildNotesList(bool isDark, bool isTablet) {
+    return CustomScrollView(
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppDimensions.paddingMedium,
+              vertical: AppDimensions.paddingSmall,
+            ),
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: "Search notes, tags, attachments...",
+                prefixIcon: const Icon(Icons.search_rounded),
+                filled: true,
+                fillColor: isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.black.withValues(alpha: 0.04),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+              onChanged: (val) => setState(() => _searchQuery = val),
+            ),
+          ),
+        ),
+        if (_isLoading)
+          const SliverFillRemaining(
+            child: Center(child: CircularProgressIndicator(color: AppColors.accentGold)),
+          )
+        else if (_filteredNotes.isEmpty)
+          SliverFillRemaining(
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.note_alt_outlined, size: 64, color: isDark ? Colors.white24 : Colors.black26),
+                  const SizedBox(height: 12),
+                  Text(
+                    _searchQuery.isEmpty ? "No Notes Yet" : "No Matching Notes",
+                    style: AppTypography.headingSmall.copyWith(
+                      color: isDark ? Colors.white54 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else ...[
+          if (_pinnedNotes.isNotEmpty)
+            MultiSliver(
+              pushPinnedChildren: true,
+              children: [
+                SliverPinnedHeader(
+                  child: Container(
+                    color: isDark ? AppColors.darkScaffold : AppColors.lightScaffold,
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
+                    child: Text(
+                      "PINNED",
+                      style: AppTypography.captionSmall.copyWith(
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 1.1,
+                        color: AppColors.accentGold,
+                      ),
+                    ),
                   ),
                 ),
-                const PopupMenuItem(
-                  value: 'widgets',
-                  child: Row(
-                    children: [
-                      Icon(Icons.widgets_outlined, size: 20),
-                      SizedBox(width: 8),
-                      Text("Widget Options"),
-                    ],
-                  ),
-                ),
-                const PopupMenuItem(
-                  value: 'settings',
-                  child: Row(
-                    children: [
-                      Icon(Icons.settings_outlined, size: 20),
-                      SizedBox(width: 8),
-                      Text("Settings"),
-                    ],
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final note = _pinnedNotes[index];
+                      return NoteCard(
+                        note: note,
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedIds.contains(note.id),
+                        onSelectToggle: (_) => _toggleSelection(note.id),
+                        onTap: () => _openEditor(note, '', isTablet),
+                        onLongPress: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(note.id);
+                          } else {
+                            _openContextMenu(note);
+                          }
+                        },
+                        onPinToggle: (pin) async {
+                          await widget.repository.pinNote(note.id, pin);
+                          _loadNotes();
+                        },
+                        onDelete: () => _deleteNote(note),
+                      );
+                    },
+                    childCount: _pinnedNotes.length,
                   ),
                 ),
               ],
             ),
-          ],
-        ],
-      ),
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppDimensions.paddingMedium,
-                    vertical: AppDimensions.paddingSmall,
-                  ),
-                  child: TextField(
-                    decoration: InputDecoration(
-                      hintText: "Search notes, tags, attachments...",
-                      prefixIcon: const Icon(Icons.search_rounded),
-                      filled: true,
-                      fillColor: isDark
-                          ? Colors.white.withValues(alpha: 0.06)
-                          : Colors.black.withValues(alpha: 0.04),
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 16),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AppDimensions.radiusInput),
-                        borderSide: BorderSide.none,
-                      ),
-                    ),
-                    onChanged: (val) => setState(() => _searchQuery = val),
-                  ),
-                ),
-              ),
-              if (_isLoading)
-                const SliverFillRemaining(
-                  child: Center(child: CircularProgressIndicator(color: AppColors.accentGold)),
-                )
-              else if (_filteredNotes.isEmpty)
-                SliverFillRemaining(
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.note_alt_outlined, size: 64, color: isDark ? Colors.white24 : Colors.black26),
-                        const SizedBox(height: 12),
-                        Text(
-                          _searchQuery.isEmpty ? "No Notes Yet" : "No Matching Notes",
-                          style: AppTypography.headingSmall.copyWith(
-                            color: isDark ? Colors.white54 : Colors.black54,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else ...[
-                if (_pinnedNotes.isNotEmpty) ...[
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          if (_unpinnedNotes.isNotEmpty)
+            MultiSliver(
+              pushPinnedChildren: true,
+              children: [
+                if (_pinnedNotes.isNotEmpty)
+                  SliverPinnedHeader(
+                    child: Container(
+                      color: isDark ? AppColors.darkScaffold : AppColors.lightScaffold,
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
                       child: Text(
-                        "PINNED",
+                        "NOTES",
                         style: AppTypography.captionSmall.copyWith(
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.1,
-                          color: AppColors.accentGold,
+                          color: isDark ? Colors.white54 : Colors.black54,
                         ),
                       ),
                     ),
                   ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final note = _pinnedNotes[index];
-                        return NoteCard(
-                          note: note,
-                          isSelectionMode: _isSelectionMode,
-                          isSelected: _selectedIds.contains(note.id),
-                          onSelectToggle: (_) => _toggleSelection(note.id),
-                          onTap: () => _openEditor(note),
-                          onLongPress: () {
-                            if (_isSelectionMode) {
-                              _toggleSelection(note.id);
-                            } else {
-                              _openContextMenu(note);
-                            }
-                          },
-                          onPinToggle: (pin) async {
-                            await widget.repository.pinNote(note.id, pin);
-                            _loadNotes();
-                          },
-                          onDelete: () async {
-                            await widget.repository.deleteNote(note.id);
-                            _loadNotes();
-                          },
-                        );
-                      },
-                      childCount: _pinnedNotes.length,
-                    ),
+                SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final note = _unpinnedNotes[index];
+                      return NoteCard(
+                        note: note,
+                        isSelectionMode: _isSelectionMode,
+                        isSelected: _selectedIds.contains(note.id),
+                        onSelectToggle: (_) => _toggleSelection(note.id),
+                        onTap: () => _openEditor(note, '', isTablet),
+                        onLongPress: () {
+                          if (_isSelectionMode) {
+                            _toggleSelection(note.id);
+                          } else {
+                            _openContextMenu(note);
+                          }
+                        },
+                        onPinToggle: (pin) async {
+                          await widget.repository.pinNote(note.id, pin);
+                          _loadNotes();
+                        },
+                        onDelete: () => _deleteNote(note),
+                      );
+                    },
+                    childCount: _unpinnedNotes.length,
                   ),
-                ],
-                if (_unpinnedNotes.isNotEmpty) ...[
-                  if (_pinnedNotes.isNotEmpty)
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                        child: Text(
-                          "NOTES",
-                          style: AppTypography.captionSmall.copyWith(
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final note = _unpinnedNotes[index];
-                        return NoteCard(
-                          note: note,
-                          isSelectionMode: _isSelectionMode,
-                          isSelected: _selectedIds.contains(note.id),
-                          onSelectToggle: (_) => _toggleSelection(note.id),
-                          onTap: () => _openEditor(note),
-                          onLongPress: () {
-                            if (_isSelectionMode) {
-                              _toggleSelection(note.id);
-                            } else {
-                              _openContextMenu(note);
-                            }
-                          },
-                          onPinToggle: (pin) async {
-                            await widget.repository.pinNote(note.id, pin);
-                            _loadNotes();
-                          },
-                          onDelete: () async {
-                            await widget.repository.deleteNote(note.id);
-                            _loadNotes();
-                          },
-                        );
-                      },
-                      childCount: _unpinnedNotes.length,
-                    ),
-                  ),
-                ],
-                const SliverToBoxAdapter(
-                  child: SizedBox(height: 100),
                 ),
               ],
-            ],
-          ),
-          if (_isSelectionMode)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: Container(
-                color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: SafeArea(
-                  top: false,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.push_pin_rounded),
-                        tooltip: "Pin / Unpin",
-                        onPressed: _selectedIds.isNotEmpty ? () => _batchPin(true) : null,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.folder_outlined),
-                        tooltip: "Move to Folder",
-                        onPressed: _selectedIds.isNotEmpty ? _batchMoveToFolder : null,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, color: AppColors.tagCoral),
-                        tooltip: "Trash",
-                        onPressed: _selectedIds.isNotEmpty ? _batchDelete : null,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            )
-          else
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 24,
-              child: CaptureBar(
-                onNewNote: () => _openEditor(),
-                onNewChecklist: () => _openEditor(null, "- [ ] "),
-                onRecordAudio: () {
-                  AudioRecordingModal.show(context, (memo) {
-                    _openEditor(null, "\n$memo\n");
-                  });
-                },
-                onScanDocument: () => _openEditor(null, "\n📄 [Scanned Document PDF]\n"),
-              ),
             ),
+          const SliverToBoxAdapter(
+            child: SizedBox(height: 100),
+          ),
         ],
+      ],
+    );
+  }
+
+  Widget _buildBottomBar(bool isDark, bool isTablet) {
+    if (_isSelectionMode) {
+      return Positioned(
+        left: 0,
+        right: 0,
+        bottom: 0,
+        child: Container(
+          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.push_pin_rounded),
+                  tooltip: "Pin / Unpin",
+                  onPressed: _selectedIds.isNotEmpty ? () => _batchPin(true) : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.folder_outlined),
+                  tooltip: "Move to Folder",
+                  onPressed: _selectedIds.isNotEmpty ? _batchMoveToFolder : null,
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, color: AppColors.tagCoral),
+                  tooltip: "Trash",
+                  onPressed: _selectedIds.isNotEmpty ? _batchDelete : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return Positioned(
+      left: 0,
+      right: 0,
+      bottom: 24,
+      child: CaptureBar(
+        onNewNote: () => _openEditor(null, '', isTablet),
+        onNewChecklist: () => _openEditor(null, "- [ ] ", isTablet),
+        onRecordAudio: () {
+          AudioRecordingModal.show(context, (memo) {
+            _openEditor(null, "\n$memo\n", isTablet);
+          });
+        },
+        onScanDocument: () => _openEditor(null, "\n📄 [Scanned Document PDF]\n", isTablet),
       ),
     );
   }

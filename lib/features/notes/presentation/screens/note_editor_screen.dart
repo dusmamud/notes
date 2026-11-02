@@ -41,6 +41,7 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
 
   ActiveToolboxPanel _activePanel = ActiveToolboxPanel.none;
   bool _showFindAndReplace = false;
+  String? _suggestedMathResult;
   String _saveStatus = "Saved";
   final List<String> _undoHistory = [];
   final List<String> _redoHistory = [];
@@ -108,13 +109,33 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
     if (lastLine.endsWith('=')) {
       final result = _mathEngine.evaluateLine(lastLine);
       if (result != null) {
-        final newText = "$text $result";
-        _contentController.value = TextEditingValue(
-          text: newText,
-          selection: TextSelection.collapsed(offset: newText.length),
-        );
+        if (widget.note.mathResultsMode == 'insert') {
+          final newText = "$text $result";
+          _contentController.value = TextEditingValue(
+            text: newText,
+            selection: TextSelection.collapsed(offset: newText.length),
+          );
+        } else {
+          // Suggest mode: show ghost badge
+          setState(() => _suggestedMathResult = result);
+        }
+      }
+    } else {
+      if (_suggestedMathResult != null) {
+        setState(() => _suggestedMathResult = null);
       }
     }
+  }
+
+  void _acceptMathResult() {
+    if (_suggestedMathResult == null) return;
+    final text = _contentController.text;
+    final newText = "$text $_suggestedMathResult";
+    _contentController.value = TextEditingValue(
+      text: newText,
+      selection: TextSelection.collapsed(offset: newText.length),
+    );
+    setState(() => _suggestedMathResult = null);
   }
 
   Future<void> _autoSave() async {
@@ -630,6 +651,43 @@ class _NoteEditorScreenState extends State<NoteEditorScreen> {
                 TableActionsBar(
                   onAction: _handleTableAction,
                   onClose: () => setState(() => _activePanel = ActiveToolboxPanel.none),
+                ),
+
+              if (_suggestedMathResult != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFF2F2F7),
+                    border: Border(
+                      top: BorderSide(color: isDark ? Colors.white12 : Colors.black12, width: 0.5),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calculate_outlined, size: 16, color: AppColors.accentGold),
+                      const SizedBox(width: 8),
+                      Text(
+                        "= $_suggestedMathResult",
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.accentGold),
+                      ),
+                      const Spacer(),
+                      TextButton.icon(
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        icon: const Icon(Icons.check, size: 14),
+                        label: const Text("Insert Answer", style: TextStyle(fontSize: 12)),
+                        onPressed: _acceptMathResult,
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close, size: 14),
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onPressed: () => setState(() => _suggestedMathResult = null),
+                      ),
+                    ],
+                  ),
                 ),
 
               _buildKeyboardAccessoryToolbar(isDark),

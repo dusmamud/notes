@@ -1,3 +1,4 @@
+import 'package:emoji_picker_flutter/emoji_picker_flutter.dart';
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -43,6 +44,7 @@ class _FoldersScreenState extends State<FoldersScreen> {
   void _showNewFolderDialog() {
     final controller = TextEditingController();
     int selectedColor = AppColors.brandPrimary.toARGB32();
+    String selectedEmoji = "📁";
 
     showDialog(
       context: context,
@@ -53,12 +55,50 @@ class _FoldersScreenState extends State<FoldersScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(
-                  controller: controller,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: "Folder Name",
-                  ),
+                Row(
+                  children: [
+                    InkWell(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (bCtx) => SizedBox(
+                            height: 280,
+                            child: EmojiPicker(
+                              onEmojiSelected: (category, emoji) {
+                                setDialogState(() => selectedEmoji = emoji.emoji);
+                                Navigator.of(bCtx).pop();
+                              },
+                              config: const Config(
+                                height: 256,
+                                checkPlatformCompatibility: true,
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white12
+                              : Colors.black12,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(selectedEmoji, style: const TextStyle(fontSize: 26)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        decoration: const InputDecoration(
+                          hintText: "Folder Name",
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -105,6 +145,7 @@ class _FoldersScreenState extends State<FoldersScreen> {
                     final folder = FolderEntity(
                       uuid: const Uuid().v4(),
                       name: name,
+                      emoji: selectedEmoji,
                       colorValue: selectedColor,
                     );
                     await widget.repository.saveFolder(folder);
@@ -169,9 +210,9 @@ class _FoldersScreenState extends State<FoldersScreen> {
                 else
                   ..._folders.map((f) {
                     return ListTile(
-                      leading: Icon(
-                        Icons.folder_rounded,
-                        color: Color(f.colorValue),
+                      leading: Text(
+                        f.emoji ?? '📁',
+                        style: const TextStyle(fontSize: 22),
                       ),
                       title: Text(f.name),
                       trailing: IconButton(
@@ -248,4 +289,3 @@ class _ColorChoice extends StatelessWidget {
     );
   }
 }
-

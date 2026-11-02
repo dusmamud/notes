@@ -5,7 +5,7 @@
     android:minHeight="40dp"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_capture_bar"
-    android:configure="com.inotesapp.inotes.widget.WidgetConfigureActivity"
+    android:configure="com.dusrel.note.widget.WidgetConfigureActivity"
     android:resizeMode="horizontal"
     android:minResizeWidth="40dp"
     android:widgetCategory="home_screen"

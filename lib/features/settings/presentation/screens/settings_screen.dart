@@ -246,9 +246,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       trailing: isSelected ? const Icon(Icons.check_rounded, color: AppColors.accentGold) : null,
                       onTap: () async {
                         await _updateSetting('app_language', key);
-                        if (mounted) {
-                          setState(() => _currentLanguage = key);
-                        }
+                        if (!mounted) return;
+                        setState(() => _currentLanguage = key);
                         if (ctx.mounted) {
                           Navigator.pop(ctx);
                         }
